@@ -11,14 +11,6 @@ const PicoSchema = new mongoose.Schema({
     ...AuditSchemaDef,
 });
 
-const onCreation = next => async rp => {
-    rp.beforeRecordMutate = function(doc, rp) {
-        doc.audit = createAudit();
-        return doc;
-    }
-    return next(rp)
-};
-
 class Pico extends BaseModel {
     constructor() {
         super({ modelName: 'Picos', schema: PicoSchema, collectionName: 'picos'});

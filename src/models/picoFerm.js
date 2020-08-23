@@ -1,20 +1,15 @@
 const mongoose = require('mongoose');
 const { createAudit, AuditSchemaDef } = require('./mixins/audit');
+const { PicoFermState } = require('./picoDictionnary');
 const { BaseModel } = require('./baseModel');
 
 const PicoFermSchema = new mongoose.Schema({
     name: { type: String, required: true },
     serialNumber: { type: String, required: true, index: { unique: true } },
+    firmwareVersion: { type: String, default:'' },
+    currentState: { type: String, default: PicoFermState.NothingTodo },
     ...AuditSchemaDef,
 });
-
-const onCreation = next => async rp => {
-    rp.beforeRecordMutate = function(doc, rp) {
-        doc.audit = createAudit();
-        return doc;
-    }
-    return next(rp)
-};
 
 class PicoFerm extends BaseModel {
     constructor() {
@@ -39,7 +34,7 @@ class PicoFerm extends BaseModel {
             type: outputType,
             args: { _id: 'MongoID!', newName: 'String' },
             resolve: async ({ source, args, context, info }) => {
-                return renameDevice(model, args._id, newName);
+                return renameDevice(model, args._id, args.newName);
             }
         });
 
@@ -52,6 +47,31 @@ class PicoFerm extends BaseModel {
             picoFermRenameOne:modelTC.getResolver('renameOneById'),
             picoFermRemoveById: modelTC.getResolver('removeById')
         };
+    }
+
+    async create(serialNumber) {
+        let audit = createAudit();
+        let doc = new this._model({name:serialNumber, serialNumber: serialNumber, audit});
+        return this._model.findOneAndUpdate({serialNumber}, {$setOnInsert: doc}, {
+            new: true,
+            upsert: true // Make this update into an upsert
+        });
+    }
+
+    async updateState(serialNumber, newState) {
+        return this._model.findOneAndUpdate(
+            {serialNumber},
+            {$set: {currentState:newState, "audit.updatedAt": new Date() }},
+            {new:true}
+        );
+    }
+
+    async updateFirmwareVersion(serialNumber, firmwareVersion) {
+        return this._model.findOneAndUpdate(
+            {serialNumber, firmwareVersion: { $ne: firmwareVersion}},
+            {$set: {firmwareVersion:firmwareVersion, "audit.updatedAt": new Date() }},
+            {new:true}
+        );
     }
 }
 

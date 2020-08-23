@@ -24,7 +24,7 @@ const schemaBuilder = new MongooseGraphQLSchemaBuilder('picobrewhousedb', [
 ]);
 
 const picoApi = new PicoApi(pico);
-const picoFermApi = new PicoFermApi();
+const picoFermApi = new PicoFermApi(picoFerm);
 const firmwareApi = new FirmwareApi();
 
 const server = new Server({});

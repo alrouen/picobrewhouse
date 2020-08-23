@@ -33,6 +33,27 @@ const PicoSessionType = {
     ManualBrew:5
 };
 
+const PicoFermRegistration = {
+    Registered:`#1#`,
+    NonRegistered:`#0#`
+};
+
+const PicoFermFirmware = {
+    UpdateAvailable:`#1#`,
+    NoUpdateAvailable:`#0#`
+}
+
+const PicoFermState = {
+    NothingTodo:`#2,4#`,
+    InProgressSendingData:`#10,0#`,
+    InProgressError:`#10,16#`,
+    Completed:`#2,16#`
+}
+
 const findDictKeyByValue = (obj, value) => Object.keys(obj).find(k => obj[k] === value);
 
-module.exports = { PicoRegistration, PicoFirmware, PicoState, PicoSessionType, findDictKeyByValue }
+module.exports = {
+    PicoRegistration, PicoFirmware, PicoState, PicoSessionType,
+    PicoFermRegistration, PicoFermFirmware, PicoFermState,
+    findDictKeyByValue
+}
