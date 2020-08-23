@@ -34,7 +34,8 @@ class PicoFerm extends BaseModel {
             type: outputType,
             args: { _id: 'MongoID!', newName: 'String' },
             resolve: async ({ source, args, context, info }) => {
-                return renameDevice(model, args._id, args.newName);
+                return renameDevice(model, args._id, args.newName)
+                    .then(() => ({recordId: args._id}));
             }
         });
 
