@@ -8,6 +8,7 @@ const PicoSchema = new mongoose.Schema({
     serialNumber: { type: String, required: true, index: { unique: true } },
     firmwareVersion: { type: String, default:'' },
     currentState: { type: String, default: PicoState.Ready },
+    errorLog: [{ error: String, date: Date, acknowledged: { type: Boolean, default: false } }],
     ...AuditSchemaDef,
 });
 
@@ -42,7 +43,7 @@ class Pico extends BaseModel {
         /**
          * query {picoById(_id:"5f424bb2d64dba856d54dd6b"){name, serialNumber, audit{createdAt, updatedAt}, _id}}
          * query {picoOne(filter:{name:"myPico"}){name, serialNumber, audit{createdAt, updatedAt}, _id}}
-         * query { picoMany {name, serialNumber, audit{createdAt, updatedAt}, _id} }
+         * query { picoMany {name, serialNumber, firmwareVersion, currentState, errorLog{error, date, acknowledged}, audit{createdAt, updatedAt}, _id} }
          */
 
         this.queries = {
@@ -65,10 +66,11 @@ class Pico extends BaseModel {
     async create(serialNumber) {
         let audit = createAudit();
         let doc = new this._model({name:serialNumber, serialNumber: serialNumber, audit});
-        return this._model.findOneAndUpdate({serialNumber}, {$setOnInsert: doc}, {
-            new: true,
-            upsert: true // Make this update into an upsert
-        });
+        return this._model.findOneAndUpdate(
+        {serialNumber},
+        { $setOnInsert: doc },
+        { new: true, upsert: true }
+        );
     }
 
     async updateState(serialNumber, newState) {
@@ -81,10 +83,18 @@ class Pico extends BaseModel {
 
     async updateFirmwareVersion(serialNumber, firmwareVersion) {
         return this._model.findOneAndUpdate(
-            {serialNumber, firmwareVersion: { $ne: firmwareVersion}},
-            {$set: {firmwareVersion:firmwareVersion, "audit.updatedAt": new Date() }},
-            {new:true}
+        {serialNumber, firmwareVersion: { $ne: firmwareVersion}},
+        {$set: {firmwareVersion:firmwareVersion, "audit.updatedAt": new Date() }},
+        {new:true}
         );
+    }
+
+    async addError(serialNumber, error) {
+        return this._model.findOneAndUpdate(
+        {serialNumber},
+        {$push: {errorLog: {error, date:new Date()}}, $set: { "audit.updatedAt": new Date() }},
+        {new: true}
+        )
     }
 
 }

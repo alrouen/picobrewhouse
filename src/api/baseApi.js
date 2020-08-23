@@ -25,7 +25,6 @@ const manageExceptions = (err) => {
 
 const returnSchemaError = (request, h, err) => {
     ApiLogger.error(err);
-    ApiLogger.error(`Invalid Schema: ${err.details.map(err => err.message).join(',')}`);
     throw Boom.badRequest(`Invalid Schema: ${err.details.map(err => err.message).join(',')}`);
 };
 

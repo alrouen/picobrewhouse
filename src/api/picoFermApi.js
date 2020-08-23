@@ -1,7 +1,7 @@
 const Joi = require('joi');
 const { getLogger } = require('../utils/logger');
 const { manageExceptions, returnSchemaError, headersForPrivateApiSchema, BaseApi } = require('./baseApi');
-const { PicoFermRegistration } = require('../models/picoDictionnary');
+const { PicoFermRegistration, PicoFermFirmware } = require('../models/picoDictionnary');
 const { corsOrigin } = require("../services/config/config");
 
 const logger = getLogger('picoFermAPI');
@@ -74,7 +74,9 @@ class PicoFermApi extends BaseApi {
         const uid = request.query.uid;
         const version = request.query.version;
         logger.info(`checkFirmware from ${uid} with version ${version}`);
-        return h.response(`#0#`).code(200);
+        return this.service.updateFirmwareVersion(uid, version)
+            .then(r => h.response(PicoFermFirmware.NoUpdateAvailable).code(200))
+            .catch(err => manageExceptions(err));
     }
 
     /**

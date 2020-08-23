@@ -1,5 +1,8 @@
 const mongoose = require('mongoose');
+const { getLogger } = require('../../utils/logger');
 const config = require('../config/config');
+
+const logger = getLogger('MongooseClient');
 
 let mongooseInstance = null;
 
@@ -13,9 +16,9 @@ const mongooseOptions = {
 module.exports = async () => {
     if (!!!mongooseInstance) {
         mongooseInstance = await mongoose.connect(config.mongodbConnectionString, mongooseOptions);
-        console.log("Connected to MongoDB with Mongoose");
+        logger.info("Connected to MongoDB with Mongoose");
     } else {
-        console.log("Already connected to MongoDB with Mongoose");
+        logger.error("Already connected to MongoDB with Mongoose");
     }
     return mongooseInstance.connection;
 };

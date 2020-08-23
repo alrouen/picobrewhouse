@@ -16,17 +16,22 @@ const { FirmwareApi } = require('./api/firmwareApi');
 
 const ProcessLogger = getLogger('PROCESS');
 
+// Model class
 const picoFerm = new PicoFerm();
 const pico = new Pico();
+
+// GraphQL schema composition with Mongoose
 const schemaBuilder = new MongooseGraphQLSchemaBuilder('picobrewhousedb', [
     (db) => picoFerm.buildModelGraphQLSchema(db),
     (db) => pico.buildModelGraphQLSchema(db)
 ]);
 
+// Rest API class, available as Hapi plugin
 const picoApi = new PicoApi(pico);
 const picoFermApi = new PicoFermApi(picoFerm);
 const firmwareApi = new FirmwareApi();
 
+// Hapi HTTP server
 const server = new Server({});
 
 process.on('unhandledRejection', (err) => {
@@ -37,13 +42,14 @@ process.on('unhandledRejection', (err) => {
 ProcessLogger.info(`PicoBrewHouse API v${version}`);
 
 (async () => {
+    ProcessLogger.info("Connecting to MongoDB...");
     const schema = await schemaBuilder.composeSchemas();
     const graphQLServer = new ApolloServer({schema:schema});
     Promise.all([
         server.register(picoApi.asPlugin()),
         server.register(picoFermApi.asPlugin()),
         server.register(firmwareApi.asPlugin()),
-        graphQLServer.applyMiddleware({ app:server })
+        graphQLServer.applyMiddleware({ app:server, cors:true })
     ]).then(_ => {
         server.start();
     });

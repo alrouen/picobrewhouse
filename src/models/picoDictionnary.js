@@ -19,7 +19,7 @@ const PicoState = {
 };
 
 const PicoRequiredAction = {
-    Nothing:`##`,
+    None:`##`,
     DeepClean:`#7#`
 };
 
@@ -53,7 +53,7 @@ const PicoFermState = {
 const findDictKeyByValue = (obj, value) => Object.keys(obj).find(k => obj[k] === value);
 
 module.exports = {
-    PicoRegistration, PicoFirmware, PicoState, PicoSessionType,
+    PicoRegistration, PicoFirmware, PicoState, PicoSessionType, PicoRequiredAction,
     PicoFermRegistration, PicoFermFirmware, PicoFermState,
     findDictKeyByValue
 }

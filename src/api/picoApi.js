@@ -3,7 +3,7 @@ const { randomString } = require('../utils/utils');
 const { getLogger } = require('../utils/logger');
 const { manageExceptions, returnSchemaError, BaseApi } = require('./baseApi');
 const { corsOrigin } = require("../services/config/config");
-const { PicoRegistration, PicoSessionType, PicoState, PicoFirmware, findDictKeyByValue } = require('../models/picoDictionnary');
+const { PicoRegistration, PicoSessionType, PicoRequiredAction, PicoState, PicoFirmware, findDictKeyByValue } = require('../models/picoDictionnary');
 
 const logger = getLogger('picoAPI');
 
@@ -111,7 +111,7 @@ class PicoApi extends BaseApi {
         const version = request.query.version;
         logger.info(`checkFirmware from ${uid} with version ${version}`);
         return this.service.updateFirmwareVersion(uid, version)
-            .then(r => h.response(`#F#`).code(200))
+            .then(r => h.response(PicoFirmware.NoUpdateAvailable).code(200))
             .catch(err => manageExceptions(err));
     }
 
@@ -140,7 +140,7 @@ class PicoApi extends BaseApi {
     getActionsNeeded(request, h) {
         const uid = request.query.uid;
         logger.info(`getActionsNeeded from ${uid}`);
-        return h.response(`##`).code(200);
+        return h.response(PicoRequiredAction.None).code(200);
     }
 
     /**
@@ -205,10 +205,12 @@ class PicoApi extends BaseApi {
      */
     errorReport(request, h) {
         const uid = request.query.uid;
-        const code = request.query.error;
+        const errorCode = request.query.code;
         const rfid = "rfid" in request.query ? request.query.rfid : "";
-        logger.info(`error report from ${uid} with code: ${code} (rfid: ${rfid})`);
-        return h.response(`\r\n`).code(200);
+        logger.info(`error report from ${uid} with error code: ${errorCode} (rfid: ${rfid})`);
+        return this.service.addError(uid, errorCode)
+            .then(r => h.response(`\r\n`).code(200))
+            .catch(err => manageExceptions(err));
     }
 
     catchAll(request, h) {
