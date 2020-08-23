@@ -1,8 +1,9 @@
 const Joi = require('joi');
 const { randomString } = require('../utils/utils');
 const { getLogger } = require('../utils/logger');
-const { manageExceptions, returnSchemaError, headersForPrivateApiSchema, BaseApi } = require('./baseApi');
+const { manageExceptions, returnSchemaError, BaseApi } = require('./baseApi');
 const { corsOrigin } = require("../services/config/config");
+const { PicoRegistration, PicoSessionType, PicoState, PicoFirmware, findDictKeyByValue } = require('../models/picoDictionnary');
 
 const logger = getLogger('picoAPI');
 
@@ -13,7 +14,7 @@ const Register_QueryParametersSchema = Joi.object().keys({
 
 const ChangeState_QueryParametersSchema = Joi.object().keys({
     picoUID: Joi.string().alphanum().required(),
-    state: Joi.number().integer().required()
+    state: Joi.number().integer().valid(...Object.values(PicoState)).required()
 }).label('ChangeState-Query-Parameters');
 
 const CheckFirmware_QueryParametersSchema = Joi.object().keys({
@@ -53,20 +54,10 @@ const ErrorReport_QueryParametersSchema = Joi.object().keys({
     rfid: Joi.string().alphanum().allow('', null)
 }).label('GetActionsNeeded-Query-Parameters');
 
-/*
-
-app_1    | 172.20.0.3 - - [19/Aug/2020 20:25:56] "GET /API/pico/register?uid=71eb1525d5dada03403c914ff8833d91 HTTP/1.0" 200 -
-app_1    | 172.20.0.3 - - [19/Aug/2020 20:25:56] "GET /API/pico/getFirmware?uid=71eb1525d5dada03403c914ff8833d91 HTTP/1.0" 200 -
-app_1    | 172.20.0.3 - - [19/Aug/2020 20:26:11] "GET /API/pico/register?uid=71eb1525d5dada03403c914ff8833d91 HTTP/1.0" 200 -
-app_1    | 172.20.0.3 - - [19/Aug/2020 20:26:12] "GET /API/pico/checkFirmware?uid=71eb1525d5dada03403c914ff8833d91&version=0.1.34 HTTP/1.0" 200 -
-app_1    | 172.20.0.3 - - [19/Aug/2020 20:26:12] "GET /API/pico/getActionsNeeded?uid=71eb1525d5dada03403c914ff8833d91 HTTP/1.0" 200 -
-
- */
-
 class PicoApi extends BaseApi {
-    constructor(model, prefix = '/API/pico') {
+    constructor(service, prefix = '/API/pico') {
         super(prefix, {cors: true, origin: corsOrigin});
-        this.model = model;
+        this.service = service;
     }
 
     /**
@@ -81,8 +72,9 @@ class PicoApi extends BaseApi {
     register (request, h) {
         const uid = request.query.uid;
         logger.info(`register from ${uid}`);
-        this.model.test().then(r => console.log(r));
-        return h.response(`#T#\r\n`).code(200);
+        return this.service.create(uid)
+            .then(r => h.response(PicoRegistration.Registered).code(200))
+            .catch(err => manageExceptions(err));
     }
 
     /**
@@ -99,9 +91,11 @@ class PicoApi extends BaseApi {
      */
     changeState (request, h) {
         const uid = request.query.picoUID;
-        const state = request.query.state;
+        const state = findDictKeyByValue(PicoState, request.query.state);
         logger.info(`changeState from ${uid} with new state: ${state}`);
-        return h.response(`\r\n`).code(200);
+        return this.service.updateState(uid, state)
+            .then(r => h.response(`\r\n`).code(200))
+            .catch(err => manageExceptions(err));
     }
 
     /**
@@ -116,7 +110,9 @@ class PicoApi extends BaseApi {
         const uid = request.query.uid;
         const version = request.query.version;
         logger.info(`checkFirmware from ${uid} with version ${version}`);
-        return h.response(`#F#`).code(200);
+        return this.service.updateFirmwareVersion(uid, version)
+            .then(r => h.response(`#F#`).code(200))
+            .catch(err => manageExceptions(err));
     }
 
     /**
