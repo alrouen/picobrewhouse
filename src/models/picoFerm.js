@@ -7,6 +7,7 @@ const PicoFermSchema = new mongoose.Schema({
     name: { type: String, required: true },
     serialNumber: { type: String, required: true, index: { unique: true } },
     firmwareVersion: { type: String, default:'' },
+    picoSessionId: mongoose.ObjectId,
     currentState: { type: String, default: findDictKeyByValue(PicoFermState, PicoFermState.NothingTodo) },
     ...AuditSchemaDef,
 });
@@ -53,10 +54,10 @@ class PicoFerm extends BaseModel {
     async create(serialNumber) {
         let audit = createAudit();
         let doc = new this._model({name:serialNumber, serialNumber: serialNumber, audit});
-        return this._model.findOneAndUpdate({serialNumber}, {$setOnInsert: doc}, {
-            new: true,
-            upsert: true // Make this update into an upsert
-        });
+        return this._model.findOneAndUpdate({serialNumber},
+            {$setOnInsert: doc},
+            { new: true, upsert: true }// Make this update into an upsert
+        );
     }
 
     async updateState(serialNumber, newState) {

@@ -1,5 +1,4 @@
 const Joi = require('joi');
-const { randomString } = require('../utils/utils');
 const { getLogger } = require('../utils/logger');
 const { manageExceptions, returnSchemaError, BaseApi } = require('./baseApi');
 const { corsOrigin } = require("../services/config/config");
@@ -157,10 +156,13 @@ class PicoApi extends BaseApi {
      */
     getSession(request, h) {
         const uid = request.query.uid;
-        const sesType = request.query.sesType;
-        const newSession = randomString();
-        logger.info(`getSession from ${uid} for this session type: ${sesType}, return this sessionId: ${newSession}`);
-        return h.response(`#${newSession}#\r\n`).code(200);
+        const sesType = findDictKeyByValue(PicoSessionType ,request.query.sesType);
+        logger.info(`getSession from ${uid} for this session type: ${sesType}`);
+        return this.service.getDeviceBySerialNumber(uid)
+            .then(p => {
+                return this.sessionService.createSession(p._id, sesType).then(s => h.response(`#${s.sessionId}#\r\n`).code(200));
+            })
+            .catch(err => manageExceptions(err));
     }
 
     /**
@@ -169,6 +171,7 @@ class PicoApi extends BaseApi {
      * @param h
      *
      * Log: /API/pico/log?uid={UID}&sesId={SID}&wort={TEMP}&therm={TEMP}&step={STEP_NAME}&[event={STEP_NAME}&]error={ERROR}&sesType={SESSION_TYPE}&timeLeft={TIME}&shutScale={SS}
+     * /API/pico/log?uid=ac1a02e59b1381b9cb9cc98c3e0c24dd&sesId=3k41nso1o9uim0f6zh80&wort=32&therm=180&step=step1&event=event1&error=0&sesType=5&timeLeft=500&shutScale=0.16
      #  Response: '\r\n\r\n'
      *
      * 'uid': fields.Str(required=True),          # 32 character alpha-numeric serial number
@@ -185,14 +188,26 @@ class PicoApi extends BaseApi {
      */
     logSession(request, h) {
         const uid = request.query.uid;
-        const { sesId, wort, therm, step, error, sesType, timeLeft, shutScale } = request.query;
-        const event = "event" in request.query ? request.query.event : "";
+        const { sesId, wort, therm, step, error, timeLeft, shutScale } = request.query;
+        const sesType = findDictKeyByValue(PicoSessionType, request.query.sesType);
+        const event = "event" in request.query ? request.query.event : null;
         logger.info(`logSession from ${uid} for this session ${sesId} and type: ${sesType}`);
-        logger.info(`Info: ${wort} / ${therm} / ${step}  / ${timeLeft} / ${shutScale}`);
-        logger.info(`event: ${event}`);
-        logger.info(`error: ${error}`);
-        logger.info("----")
-        return h.response(`\r\n\r\n`).code(200);
+        return this.service.getDeviceBySerialNumber(uid)
+            .then(p => {
+                return this.sessionService.addBrewingDataSet({
+                    brewerId:p._id,
+                    sessionType: sesType,
+                    sessionId:sesId,
+                    wortTemperature:wort,
+                    thermoblockTemperature:therm,
+                    step,
+                    event:event,
+                    error,
+                    timeLeft,
+                    shutScale
+                }).then(s => h.response(`\r\n\r\n`).code(200))
+            })
+            .catch(err => manageExceptions(err));
     }
 
 

@@ -50,7 +50,7 @@ const PicoFermState = {
     Completed:`#2,16#`
 }
 
-const PicoSessionState = {
+const PicoBrewingSessionState = {
     Designing:"designing",
     Brewing:"brewing",
     Fermenting:"fermenting",
@@ -63,6 +63,6 @@ const findDictKeyByValue = (obj, value) => Object.keys(obj).find(k => obj[k] ===
 module.exports = {
     PicoRegistration, PicoFirmware, PicoState, PicoSessionType, PicoRequiredAction,
     PicoFermRegistration, PicoFermFirmware, PicoFermState,
-    PicoSessionState,
+    PicoBrewingSessionState,
     findDictKeyByValue
 }

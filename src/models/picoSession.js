@@ -1,33 +1,41 @@
 const mongoose = require('mongoose');
 const { createAudit, AuditSchemaDef } = require('./mixins/audit');
-const { PicoSessionState } = require('./picoDictionnary');
+const { PicoBrewingSessionState, PicoSessionType, findDictKeyByValue } = require('./picoDictionnary');
 const { BaseModel } = require('./baseModel');
+const { randomString, fahrenheitToCelcius } = require('../utils/utils');
+
+const BrewingDataset = {
+    wortTemperature: { type: Number, required: true},
+    thermoblockTemperature: { type: Number, required: true },
+    step: { type: String, required: true },
+    event: String,
+    error: { type: Number, required: true },
+    timeLeft: { type: Number, required: true },
+    shutScale: { type: Number, required: true },
+    ts: { type: Date, required: true }
+};
+
+const FermentationDataset = {
+    temperature: { type: Number, required: true },
+    pressure: { type: Number, required: true },
+    ts: { type: Date, required: true }
+};
 
 const PicoSessionSchema = new mongoose.Schema({
     name: { type: String, required: true },
+    sessionType: { type: String, enum: Object.keys(PicoSessionType) },
     sessionId: { type: String, unique: true},
     recipeId: mongoose.ObjectId,
     brewerId: { type: mongoose.ObjectId, required: true },
-    fermentationMonitoring: mongoose.ObjectId,
-    status: { type: String, enum: Object.values(PicoSessionState), default: PicoSessionState.Designing },
-    brewingLog: [],
-    fermentationLog: [],
+    brewingStatus: { type: String, enum: Object.values(PicoBrewingSessionState) },
+    brewingLog: [BrewingDataset],
+    fermentationLog: [FermentationDataset],
     ...AuditSchemaDef,
 });
 
-const onCreation = next => async rp => {
-    rp.beforeRecordMutate = function(doc, rp) {
-        const userId = rp.context.user.id;
-        doc.audit = createAudit(userId);
-        doc.owner = userId;
-        return doc;
-    }
-    return next(rp)
-};
-
 class PicoSession extends BaseModel {
     constructor() {
-        super({modelName: 'Picosessions', schema: PicoSessionSchema, collectionName: 'Picosessions'});
+        super({modelName: 'Picosessions', schema: PicoSessionSchema, collectionName: 'picosessions'});
     }
 
     buildResolver(model, modelTC) {
@@ -53,17 +61,60 @@ class PicoSession extends BaseModel {
             }
         });
 
+        /**
+         * query { picoSessionMany {name, sessionType, sessionId, brewerId, brewingStatus, recipeId, brewingLog{wortTemperature, thermoblockTemperature, step, shutScale, ts, timeLeft, event, error} , audit{createdAt, updatedAt}}}
+         */
+
         this.queries = {
             picoSessionById: modelTC.getResolver('findById'),
             picoSessionOne: modelTC.getResolver('findOne'),
             picoSessionMany: modelTC.getResolver('findMany')
         }
         this.mutations = {
-            picoSessionCreateOne:modelTC.getResolver('createOne').wrapResolve(onCreation),
             picoSessionRenameOne:modelTC.getResolver('renameOneById'),
             picoSessionRemoveById: modelTC.getResolver('removeById')
         };
     }
+
+    async createSession(brewerId, sessionType) {
+        let audit = createAudit();
+        let doc = new this._model({
+            name:sessionType,
+            sessionType,
+            sessionId:randomString(),
+            brewerId,
+            audit
+        });
+        return doc.save();
+    }
+
+    async addBrewingDataSet({brewerId, sessionType, sessionId, wortTemperature, thermoblockTemperature, step, event = null, error, timeLeft, shutScale}) {
+        let dataset = {
+            wortTemperature:fahrenheitToCelcius(wortTemperature),
+            thermoblockTemperature:fahrenheitToCelcius(thermoblockTemperature),
+            step,
+            error,
+            timeLeft,
+            shutScale,
+            ts:new Date()
+        }
+        if(!!event) {
+            dataset.event = event;
+        }
+
+        return this._model.findOneAndUpdate(
+            {brewerId, sessionType, sessionId},
+            {$push: { brewingLog: dataset}, $set: { brewingStatus: PicoBrewingSessionState.Brewing, "audit.updatedAt": new Date() } },
+            {new: true}
+        );
+
+    }
+
+    /*async addFermentationDataSet({picoFermId, }) {
+
+    }*/
 }
+
+
 
 module.exports = PicoSession

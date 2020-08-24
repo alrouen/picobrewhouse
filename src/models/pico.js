@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { createAudit, AuditSchemaDef } = require('./mixins/audit');
 const { PicoState } = require('./picoDictionnary');
+const { RecordNotFound } = require('../apiException');
 const { BaseModel } = require('./baseModel');
 
 const PicoSchema = new mongoose.Schema({
@@ -71,6 +72,13 @@ class Pico extends BaseModel {
         { $setOnInsert: doc },
         { new: true, upsert: true }
         );
+    }
+
+    async getDeviceBySerialNumber(serialNumber) {
+        return this._model.findOne({serialNumber}).then(r => {
+            if(!!!r) throw new RecordNotFound();
+            return r;
+        });
     }
 
     async updateState(serialNumber, newState) {
