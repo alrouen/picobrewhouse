@@ -1,10 +1,10 @@
 const Joi = require('joi');
 const { getLogger } = require('../utils/logger');
 const { manageExceptions, returnSchemaError, headersForPrivateApiSchema, BaseApi } = require('./baseApi');
-const { PicoFermRegistration, PicoFermFirmware } = require('../models/picoDictionnary');
+const { PicoFermRegistration, PicoFermFirmware, PicoFermState, findDictKeyByValue } = require('../models/picoDictionnary');
 const { corsOrigin } = require("../services/config/config");
 
-const logger = getLogger('picoFermAPI');
+const logger = getLogger('PICOFERM-API');
 
 // Query params
 const IsRegistered_QueryParametersSchema = Joi.object().keys({
@@ -39,9 +39,10 @@ const LogDataSet_QueryParametersSchema = Joi.object().keys({
 
 
 class PicoFermApi extends BaseApi {
-    constructor(service, prefix = '/API/PicoFerm') {
+    constructor(service, sessionService, prefix = '/API/PicoFerm') {
         super(prefix, { cors: true, origin: corsOrigin});
         this.service = service;
+        this.sessionService = sessionService;
     }
 
     /**
@@ -109,7 +110,7 @@ class PicoFermApi extends BaseApi {
     getState(request, h) {
         const uid = request.query.uid;
         logger.info(`getState from ${uid}`);
-        return h.response(`#10,0#`).code(200);
+        return h.response(PicoFermState.NothingTodo).code(200);
     }
 
     /**

@@ -1,13 +1,15 @@
 'use strict';
+
+const { ApolloServer } = require('apollo-server-hapi');
 const { version } = require('../package.json');
 const { getLogger } = require('./utils/logger');
-const { ApolloServer } = require('apollo-server-hapi');
 const { MongooseGraphQLSchemaBuilder } = require('./services/graphQLSchemaBuilder');
 const Server = require('./server');
 
 // Data model for GraphQL API
 const PicoFerm = require('./models/picoFerm');
 const Pico = require('./models/pico');
+const PicoSession = require('./models/picoSession');
 
 // REST API for devices
 const { PicoApi } = require('./api/picoApi');
@@ -19,28 +21,31 @@ const ProcessLogger = getLogger('PROCESS');
 // Model class
 const picoFerm = new PicoFerm();
 const pico = new Pico();
+const picoSession = new PicoSession();
 
 // GraphQL schema composition with Mongoose
 const schemaBuilder = new MongooseGraphQLSchemaBuilder('picobrewhousedb', [
     (db) => picoFerm.buildModelGraphQLSchema(db),
-    (db) => pico.buildModelGraphQLSchema(db)
+    (db) => pico.buildModelGraphQLSchema(db),
+    (db) => picoSession.buildModelGraphQLSchema(db)
 ]);
 
-// Rest API class, available as Hapi plugin
-const picoApi = new PicoApi(pico);
-const picoFermApi = new PicoFermApi(picoFerm);
+// Rest API class, available as Hapi plugin, with injection of required model class for access to persistence methods
+const picoApi = new PicoApi(pico, picoSession);
+const picoFermApi = new PicoFermApi(picoFerm, picoSession);
 const firmwareApi = new FirmwareApi();
 
 // Hapi HTTP server
 const server = new Server({});
 
+// Global error handler...
 process.on('unhandledRejection', (err) => {
     ProcessLogger.error(err);
     process.exit(1);
 });
 
+// Kicking-off everything...
 ProcessLogger.info(`PicoBrewHouse API v${version}`);
-
 (async () => {
     ProcessLogger.info("Connecting to MongoDB...");
     const schema = await schemaBuilder.composeSchemas();

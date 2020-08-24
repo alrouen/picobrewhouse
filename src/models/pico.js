@@ -25,7 +25,7 @@ class Pico extends BaseModel {
             t.addFields({
                 recordId: {
                     type: 'MongoID',
-                    description: 'Removed document ID',
+                    description: 'document ID',
                 }
             });
         });

@@ -11,7 +11,7 @@ const ServerLogger = getLogger('SERVER');
 
 const swaggerOptions = {
     info: {
-        title: 'AI Resource API Documentation',
+        title: 'PicoBrewHouse API Documentation',
         version: Pack.version,
     },
     reuseDefinitions:false,

@@ -5,7 +5,7 @@ const { manageExceptions, returnSchemaError, BaseApi } = require('./baseApi');
 const { corsOrigin } = require("../services/config/config");
 const { PicoRegistration, PicoSessionType, PicoRequiredAction, PicoState, PicoFirmware, findDictKeyByValue } = require('../models/picoDictionnary');
 
-const logger = getLogger('picoAPI');
+const logger = getLogger('PICO-API');
 
 // Query params
 const Register_QueryParametersSchema = Joi.object().keys({
@@ -55,9 +55,10 @@ const ErrorReport_QueryParametersSchema = Joi.object().keys({
 }).label('GetActionsNeeded-Query-Parameters');
 
 class PicoApi extends BaseApi {
-    constructor(service, prefix = '/API/pico') {
+    constructor(service, sessionService, prefix = '/API/pico') {
         super(prefix, {cors: true, origin: corsOrigin});
         this.service = service;
+        this.sessionService = sessionService;
     }
 
     /**

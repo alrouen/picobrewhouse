@@ -1,13 +1,13 @@
 const mongoose = require('mongoose');
 const { createAudit, AuditSchemaDef } = require('./mixins/audit');
-const { PicoFermState } = require('./picoDictionnary');
+const { PicoFermState, findDictKeyByValue } = require('./picoDictionnary');
 const { BaseModel } = require('./baseModel');
 
 const PicoFermSchema = new mongoose.Schema({
     name: { type: String, required: true },
     serialNumber: { type: String, required: true, index: { unique: true } },
     firmwareVersion: { type: String, default:'' },
-    currentState: { type: String, default: PicoFermState.NothingTodo },
+    currentState: { type: String, default: findDictKeyByValue(PicoFermState, PicoFermState.NothingTodo) },
     ...AuditSchemaDef,
 });
 
@@ -24,7 +24,7 @@ class PicoFerm extends BaseModel {
             t.addFields({
                 recordId: {
                     type: 'MongoID',
-                    description: 'Removed document ID',
+                    description: 'document ID',
                 }
             });
         });

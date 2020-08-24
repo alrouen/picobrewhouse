@@ -3,7 +3,7 @@ const { getLogger } = require('../utils/logger');
 const { manageExceptions, returnSchemaError, headersForPrivateApiSchema, BaseApi } = require('./baseApi');
 const { corsOrigin } = require("../services/config/config");
 
-const logger = getLogger('firmwareApi');
+const logger = getLogger('FIRMWARE-API');
 
 class FirmwareApi extends BaseApi {
     constructor(prefix = '/firmware') {
