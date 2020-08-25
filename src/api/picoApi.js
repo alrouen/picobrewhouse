@@ -91,13 +91,21 @@ class PicoApi extends BaseApi {
      */
     changeState (request, h) {
         const uid = request.query.picoUID;
-        const state = findDictKeyByValue(PicoState, request.query.state);
+        const rawState = request.query.state
+        const state = findDictKeyByValue(PicoState, rawState);
         logger.info(`changeState from ${uid} with new state: ${state}`);
 
         //TODO : when receiving "Ready" state, check for any brewing session related to this machine and set it to "brewing finished"
 
         return this.service.updateState(uid, state)
-            .then(r => h.response(`\r\n`).code(200))
+            .then(r => {
+                if(rawState === PicoState.Ready) {
+                    console.log(r);
+                    return this.sessionService.endSessionOfBrewerId(r._id).then(h.response(`\r\n`).code(200));
+                } else {
+                    return h.response(`\r\n`).code(200);
+                }
+            })
             .catch(err => manageExceptions(err));
     }
 

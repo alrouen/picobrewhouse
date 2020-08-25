@@ -88,6 +88,17 @@ class PicoSession extends BaseModel {
         return doc.save();
     }
 
+    async getById(id) {
+        return this._model.findById(id);
+    }
+
+    async endSessionOfBrewerId(brewerId) {
+        return this._model.updateMany(
+            { brewerId, brewingStatus: { $ne : PicoBrewingSessionState.Finished }},
+            { brewingStatus: PicoBrewingSessionState.Finished }
+        );
+    }
+
     async addBrewingDataSet({brewerId, sessionType, sessionId, wortTemperature, thermoblockTemperature, step, event = null, error, timeLeft, shutScale}) {
         let dataset = {
             wortTemperature:fahrenheitToCelcius(wortTemperature),

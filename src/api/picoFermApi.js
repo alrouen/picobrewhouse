@@ -1,7 +1,7 @@
 const Joi = require('joi');
 const { getLogger } = require('../utils/logger');
-const { manageExceptions, returnSchemaError, headersForPrivateApiSchema, BaseApi } = require('./baseApi');
-const { PicoFermRegistration, PicoFermFirmware, PicoFermState, findDictKeyByValue } = require('../models/picoDictionnary');
+const { manageExceptions, returnSchemaError, BaseApi } = require('./baseApi');
+const { PicoFermRegistration, PicoFermFirmware, PicoFermState, PicoFermStateResponse, PicoBrewingSessionState, findDictKeyByValue } = require('../models/picoDictionnary');
 const { corsOrigin } = require("../services/config/config");
 
 const logger = getLogger('PICOFERM-API');
@@ -75,7 +75,7 @@ class PicoFermApi extends BaseApi {
         const uid = request.query.uid;
         const version = request.query.version;
         logger.info(`checkFirmware from ${uid} with version ${version}`);
-        return this.service.updateFirmwareVersion(uid, version)
+        return this.service.updateFirmwareVersionBySerialNumber(uid, version)
             .then(r => h.response(PicoFermFirmware.NoUpdateAvailable).code(200))
             .catch(err => manageExceptions(err));
     }
@@ -110,7 +110,26 @@ class PicoFermApi extends BaseApi {
     getState(request, h) {
         const uid = request.query.uid;
         logger.info(`getState from ${uid}`);
-        return h.response(PicoFermState.NothingTodo).code(200);
+
+        const resolveNewState = async (picoFermId, currentState, sessionId) => {
+
+            let newState = currentState;
+
+            if(!!sessionId) {
+                let session = await this.sessionService.getById(sessionId);
+                newState = !!session && session.brewingStatus === PicoBrewingSessionState.Fermenting ? PicoFermState.InProgressSendingData : PicoFermState.NothingTodo;
+                return this.service.updateStateById(picoFermId, findDictKeyByValue(PicoFermState, newState)).then(p => newState);
+            } else {
+                return Promise.resolve(newState);
+            }
+        }
+
+        return this.service.getDeviceBySerialNumber(uid)
+            .then(p =>
+                resolveNewState(p._id, p.currentState, p.picoSessionId)
+                    .then(state => h.response(PicoFermStateResponse[findDictKeyByValue(PicoFermState, state)]).code(200))
+            )
+            .catch(err => manageExceptions(err));
     }
 
     /**
