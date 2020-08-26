@@ -3,6 +3,13 @@ version: '3.1'
 
 services:
 
+  picobrewhouse:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 80:80
+
   mongo:
     image: library/mongo:4.4.0-bionic
     restart: always
