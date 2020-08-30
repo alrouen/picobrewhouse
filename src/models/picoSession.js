@@ -27,7 +27,7 @@ const PicoSessionSchema = new mongoose.Schema({
     sessionId: { type: String, unique: true},
     recipeId: mongoose.ObjectId,
     brewerId: { type: mongoose.ObjectId, required: true },
-    brewingStatus: { type: String, enum: Object.values(PicoBrewingSessionState) },
+    status: { type: String, enum: Object.values(PicoBrewingSessionState) },
     brewingLog: [BrewingDataset],
     fermentationLog: [FermentationDataset],
     ...AuditSchemaDef,

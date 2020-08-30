@@ -8,32 +8,32 @@ const { MongooseGraphQLSchemaBuilder } = require('../../src/services/graphQLSche
 const Server = require('../../src/server');
 
 // Data model for GraphQL API
-const Pico = require('../../src/models/pico');
+const PicoFerm = require('../../src/models/picoFerm');
 const PicoSession = require('../../src/models/picoSession');
 
 // Pico API dictionnary
-const { PicoRegistration, PicoFirmware, PicoState, PicoSessionType,
+const { PicoFermRegistration, PicoFermFirmware, PicoFermState, PicoFermStateResponse,
     findDictKeyByValue } = require('../../src/models/picoDictionnary');
 
 // REST API for devices
-const { PicoApi } = require('../../src/api/picoApi');
+const { PicoFermApi: PicoFermApi } = require('../../src/api/picoFermApi');
 
 // Mock hardware uid
-const { pico1Uid, pico2Uid } = require('../mock');
+const { picoFerm1Uid, picoFerm2Uid, picoFerm1Token, picoFerm2Token } = require('../mock');
 
 chai.config.includeStack = true; // To display error on tests failures
 
 // Model class
-const pico = new Pico();
+const picoFerm = new PicoFerm();
 const picoSession = new PicoSession();
 
 const sessionPattern = new RegExp(/#([a-z0-9]{20})#\r\n/);
 
-const picoApi = new PicoApi(pico, picoSession);
+const picoFermApi = new PicoFermApi(picoFerm, picoSession);
 
 // GraphQL schema composition with Mongoose
 const schemaBuilder = new MongooseGraphQLSchemaBuilder('picobrewhousedb-test', [
-    (db) => pico.buildModelGraphQLSchema(db),
+    (db) => picoFerm.buildModelGraphQLSchema(db),
     (db) => picoSession.buildModelGraphQLSchema(db)
 ]);
 
@@ -41,12 +41,12 @@ const server = new Server({});
 var graphQLServer;
 var tmpSession;
 
-describe('## PICO API integration test', () => {
+describe('## PICOFERM API integration test', () => {
     before((done) => {
         schemaBuilder.composeSchemas().then(s => {
             graphQLServer = new ApolloServer({schema:s});
             Promise.all([
-                server.register(picoApi.asPlugin()),
+                server.register(picoFermApi.asPlugin()),
                 graphQLServer.applyMiddleware({ app:server, cors:true })
             ]).then(_ => {
                 server.start().then(done);
@@ -73,32 +73,31 @@ describe('## PICO API integration test', () => {
 
             const response = await server.inject({
                 method: 'GET',
-                url: `/API/pico/register?uid=${pico1Uid}`,
+                url: `/API/PicoFerm/isRegistered?uid=${picoFerm1Uid}&token=${picoFerm1Token}`,
             });
             expect(response.statusCode).to.equal(200);
-            expect(response.payload).to.equal(PicoRegistration.Registered);
+            expect(response.payload).to.equal(PicoFermRegistration.Registered);
         });
 
         it('Auto register new device #2', async () => {
 
             const response = await server.inject({
                 method: 'GET',
-                url: `/API/pico/register?uid=${pico2Uid}`,
+                url: `/API/PicoFerm/isRegistered?uid=${picoFerm2Uid}&token=${picoFerm2Token}`,
             });
             expect(response.statusCode).to.equal(200);
-            expect(response.payload).to.equal(PicoRegistration.Registered);
+            expect(response.payload).to.equal(PicoFermRegistration.Registered);
         });
 
         it('Allows listing registered devices', async () => {
             const { query } = createTestClient(graphQLServer);
             const QUERY = gql`
                 query { 
-                    picoMany {
+                    picoFermMany {
                         name, 
                         serialNumber, 
                         firmwareVersion, 
-                        currentState, 
-                        errorLog { error, date, acknowledged }, 
+                        currentState,
                         audit { createdAt, updatedAt }, 
                         _id 
                     } 
@@ -106,20 +105,19 @@ describe('## PICO API integration test', () => {
             `;
 
             const response = await query({ query: QUERY });
-            expect(response.data.picoMany).to.exist;
-            const picos = response.data.picoMany;
+            expect(response.data.picoFermMany).to.exist;
+            const picos = response.data.picoFermMany;
             expect(picos.length).to.equal(2);
-            expect(picos[0].serialNumber).to.equal(pico1Uid);
-            expect(picos[1].serialNumber).to.equal(pico2Uid);
-            expect(picos[0].name).to.equal(pico1Uid);
+            expect(picos[0].serialNumber).to.equal(picoFerm1Uid);
+            expect(picos[1].serialNumber).to.equal(picoFerm2Uid);
+            expect(picos[0].name).to.equal(picoFerm1Uid);
             expect(picos[0].firmwareVersion).to.equal("");
-            expect(picos[0].currentState).to.equal(findDictKeyByValue(PicoState, PicoState.Ready));
-            expect(picos[0].errorLog.length).to.equal(0);
+            expect(picos[0].currentState).to.equal(findDictKeyByValue(PicoFermState, PicoFermState.NothingTodo));
             expect(picos[0].audit.createdAt).to.equal(picos[0].audit.updatedAt);
         });
     });
 
-    describe(' # Device firmware', () => {
+/*    describe(' # Device firmware', () => {
         it('Allows version registration', async () => {
             const response = await server.inject({
                 method: 'GET',
@@ -133,10 +131,10 @@ describe('## PICO API integration test', () => {
             const { query } = createTestClient(graphQLServer);
             const QUERY = gql`
                 query {
-                    picoOne(filter:{serialNumber:"${pico1Uid}"}) { 
-                        name, 
-                        serialNumber, 
-                        audit { createdAt, updatedAt }, 
+                    picoOne(filter:{serialNumber:"${pico1Uid}"}) {
+                        name,
+                        serialNumber,
+                        audit { createdAt, updatedAt },
                         firmwareVersion
                     }
                 }
@@ -165,10 +163,10 @@ describe('## PICO API integration test', () => {
             const { query } = createTestClient(graphQLServer);
             const QUERY = gql`
                 query {
-                    picoOne(filter:{serialNumber:"${pico2Uid}"}) { 
-                        name, 
-                        serialNumber, 
-                        audit { createdAt, updatedAt }, 
+                    picoOne(filter:{serialNumber:"${pico2Uid}"}) {
+                        name,
+                        serialNumber,
+                        audit { createdAt, updatedAt },
                         currentState
                     }
                 }
@@ -193,9 +191,9 @@ describe('## PICO API integration test', () => {
 
             const GET_DEVICE = gql`
                 query {
-                    picoOne(filter:{serialNumber:"${pico1Uid}"}) { 
-                        name, 
-                        serialNumber, 
+                    picoOne(filter:{serialNumber:"${pico1Uid}"}) {
+                        name,
+                        serialNumber,
                         _id
                     }
                 }
@@ -240,8 +238,8 @@ describe('## PICO API integration test', () => {
             const { query } = createTestClient(graphQLServer);
             const QUERY = gql`
                 query {
-                    picoSessionOne(filter:{sessionId:"${tmpSession}"}) { 
-                        name, 
+                    picoSessionOne(filter:{sessionId:"${tmpSession}"}) {
+                        name,
                         sessionId,
                         sessionType,
                         brewerId,
@@ -268,5 +266,5 @@ describe('## PICO API integration test', () => {
             expect(session.brewerId).to.equal(picoId);
             expect(session.sessionType).to.equal(findDictKeyByValue(PicoSessionType, PicoSessionType.ManualBrew));
         });
-    });
+    });*/
 });
