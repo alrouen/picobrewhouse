@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha 'test/**/*.test.js'",
+    "test-int": "mocha 'test/**/*.int.js'",
+    "test-single": "mocha $1"
   },
   "author": "",
   "license": "ISC",
@@ -30,5 +32,10 @@
     "uuid": "^8.3.0",
     "winston": "^3.3.3",
     "xstate": "^4.12.0"
+  },
+  "devDependencies": {
+    "apollo-server-testing": "^2.17.0",
+    "chai": "^4.2.0",
+    "mocha": "^8.1.3"
   }
 }

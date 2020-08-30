@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { createAudit, AuditSchemaDef } = require('./mixins/audit');
-const { PicoState } = require('./picoDictionnary');
+const { PicoState, findDictKeyByValue } = require('./picoDictionnary');
 const { RecordNotFound } = require('../apiException');
 const { BaseModel } = require('./baseModel');
 
@@ -8,7 +8,7 @@ const PicoSchema = new mongoose.Schema({
     name: { type: String, required: true },
     serialNumber: { type: String, required: true, index: { unique: true } },
     firmwareVersion: { type: String, default:'' },
-    currentState: { type: String, default: PicoState.Ready },
+    currentState: { type: String, default: findDictKeyByValue(PicoState, PicoState.Ready) },
     errorLog: [{ error: String, date: Date, acknowledged: { type: Boolean, default: false } }],
     ...AuditSchemaDef,
 });

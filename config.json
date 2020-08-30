@@ -1,6 +1,6 @@
 {
   "corsOrigin": "*",
-  "port": 80,
+  "port": 8082,
   "logLevel": "debug",
   "mongodbConnectionString": "mongodb://root:password@localhost:27017"
 }
