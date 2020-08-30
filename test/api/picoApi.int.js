@@ -12,7 +12,7 @@ const Pico = require('../../src/models/pico');
 const PicoSession = require('../../src/models/picoSession');
 
 // Pico API dictionnary
-const { PicoRegistration, PicoFirmware, PicoState, PicoSessionType,
+const { PicoRegistration, PicoFirmware, PicoState, PicoStateRequest, PicoSessionType,
     findDictKeyByValue } = require('../../src/models/picoDictionnary');
 
 // REST API for devices
@@ -123,7 +123,7 @@ describe('## PICO API integration test', () => {
         it('Allows version registration', async () => {
             const response = await server.inject({
                 method: 'GET',
-                url: `/API/pico/checkFirmware?uid=${pico1Uid}&version=0.2.6`,
+                url: `/API/pico/checkFirmware?uid=${pico1Uid}&version=0.1.34`,
             });
             expect(response.statusCode).to.equal(200);
             expect(response.payload).to.equal(PicoFirmware.NoUpdateAvailable);
@@ -145,7 +145,7 @@ describe('## PICO API integration test', () => {
             expect(response.data.picoOne).to.exist;
             const pico1 = response.data.picoOne;
             expect(pico1.serialNumber).to.equal(pico1Uid);
-            expect(pico1.firmwareVersion).to.equal("0.2.6");
+            expect(pico1.firmwareVersion).to.equal("0.1.34");
             const createdAt = moment(pico1.audit.createdAt);
             const updatedAt = moment(pico1.audit.updatedAt);
             expect(updatedAt.isAfter(createdAt)).to.equal(true);
@@ -156,7 +156,7 @@ describe('## PICO API integration test', () => {
         it('Allows state update', async () => {
             const response = await server.inject({
                 method: 'GET',
-                url: `/API/pico/picoChangeState?picoUID=${pico2Uid}&state=${PicoState.DeepClean}`,
+                url: `/API/pico/picoChangeState?picoUID=${pico2Uid}&state=${PicoStateRequest.DeepClean}`,
             });
             expect(response.statusCode).to.equal(200);
         });
@@ -177,7 +177,7 @@ describe('## PICO API integration test', () => {
             expect(response.data.picoOne).to.exist;
             const pico2 = response.data.picoOne;
             expect(pico2.serialNumber).to.equal(pico2Uid);
-            expect(pico2.currentState).to.equal(findDictKeyByValue(PicoState, PicoState.DeepClean));
+            expect(pico2.currentState).to.equal(PicoState.DeepClean);
             const createdAt = moment(pico2.audit.createdAt);
             const updatedAt = moment(pico2.audit.updatedAt);
             expect(updatedAt.isAfter(createdAt)).to.equal(true);

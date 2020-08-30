@@ -112,54 +112,57 @@ describe('## PICOFERM API integration test', () => {
             expect(picos[1].serialNumber).to.equal(picoFerm2Uid);
             expect(picos[0].name).to.equal(picoFerm1Uid);
             expect(picos[0].firmwareVersion).to.equal("");
-            expect(picos[0].currentState).to.equal(findDictKeyByValue(PicoFermState, PicoFermState.NothingTodo));
+            expect(picos[0].currentState).to.equal(PicoFermState.NothingTodo);
             expect(picos[0].audit.createdAt).to.equal(picos[0].audit.updatedAt);
         });
     });
 
-/*    describe(' # Device firmware', () => {
+    describe(' # Device firmware', () => {
         it('Allows version registration', async () => {
             const response = await server.inject({
                 method: 'GET',
-                url: `/API/pico/checkFirmware?uid=${pico1Uid}&version=0.2.6`,
+                url: `/API/PicoFerm/checkFirmware?uid=${picoFerm1Uid}&version=0.2.6`,
             });
             expect(response.statusCode).to.equal(200);
-            expect(response.payload).to.equal(PicoFirmware.NoUpdateAvailable);
+            expect(response.payload).to.equal(PicoFermFirmware.NoUpdateAvailable);
         });
 
         it('Allows to retrieve device firmware', async () => {
             const { query } = createTestClient(graphQLServer);
             const QUERY = gql`
                 query {
-                    picoOne(filter:{serialNumber:"${pico1Uid}"}) {
+                    picoFermOne(filter:{serialNumber:"${picoFerm1Uid}"}) {
                         name,
                         serialNumber,
                         audit { createdAt, updatedAt },
-                        firmwareVersion
+                        firmwareVersion,
+                        currentState
                     }
                 }
             `;
             const response = await query({ query: QUERY });
-            expect(response.data.picoOne).to.exist;
-            const pico1 = response.data.picoOne;
-            expect(pico1.serialNumber).to.equal(pico1Uid);
-            expect(pico1.firmwareVersion).to.equal("0.2.6");
-            const createdAt = moment(pico1.audit.createdAt);
-            const updatedAt = moment(pico1.audit.updatedAt);
+            expect(response.data.picoFermOne).to.exist;
+            const picoFerm1 = response.data.picoFermOne;
+            expect(picoFerm1.serialNumber).to.equal(picoFerm1Uid);
+            expect(picoFerm1.firmwareVersion).to.equal("0.2.6");
+            const createdAt = moment(picoFerm1.audit.createdAt);
+            const updatedAt = moment(picoFerm1.audit.updatedAt);
             expect(updatedAt.isAfter(createdAt)).to.equal(true);
         });
     });
 
     describe(' # Device state', () => {
-        it('Allows state update', async () => {
+
+        it('Allows state retrieval', async () => {
             const response = await server.inject({
                 method: 'GET',
-                url: `/API/pico/picoChangeState?picoUID=${pico2Uid}&state=${PicoState.DeepClean}`,
+                url: `/API/PicoFerm/getState?uid=${picoFerm1Uid}`,
             });
             expect(response.statusCode).to.equal(200);
+            expect(response.payload).to.equal(PicoFermStateResponse.NothingTodo);
         });
 
-        it('Allows to retrieve device state', async () => {
+/*        it('Allows state update', async () => {
             const { query } = createTestClient(graphQLServer);
             const QUERY = gql`
                 query {
@@ -179,19 +182,21 @@ describe('## PICOFERM API integration test', () => {
             const createdAt = moment(pico2.audit.createdAt);
             const updatedAt = moment(pico2.audit.updatedAt);
             expect(updatedAt.isAfter(createdAt)).to.equal(true);
-        });
+        });*/
+
+
     });
 
     describe(' # Mutation of device',  () => {
         it('Allows to rename a device', async () => {
 
-            const newName = "myPico";
+            const newName = "myPicoFerm";
 
             const { query, mutate } = createTestClient(graphQLServer);
 
             const GET_DEVICE = gql`
                 query {
-                    picoOne(filter:{serialNumber:"${pico1Uid}"}) {
+                    picoFermOne(filter:{serialNumber:"${picoFerm1Uid}"}) {
                         name,
                         serialNumber,
                         _id
@@ -200,26 +205,24 @@ describe('## PICOFERM API integration test', () => {
             `;
 
             const getDeviceResponse = await query({ query: GET_DEVICE });
-            expect(getDeviceResponse.data.picoOne).to.exist;
-            const picoId = getDeviceResponse.data.picoOne._id;
+            expect(getDeviceResponse.data.picoFermOne).to.exist;
+            const picoId = getDeviceResponse.data.picoFermOne._id;
 
             const RENAME_DEVICE = gql`
-                mutation { picoRenameOne(_id:"${picoId}", newName:"${newName}"){recordId}}
+                mutation { picoFermRenameOne(_id:"${picoId}", newName:"${newName}"){recordId}}
             `;
 
             const renameDeviceResponse = await mutate({ mutation: RENAME_DEVICE });
-            expect(renameDeviceResponse.data.picoRenameOne).to.exist;
+            expect(renameDeviceResponse.data.picoFermRenameOne).to.exist;
 
             const renamedDeviceQueryResponse = await query({ query: GET_DEVICE });
-            expect(renamedDeviceQueryResponse.data.picoOne).to.exist;
-            expect(renamedDeviceQueryResponse.data.picoOne.serialNumber).to.equal(pico1Uid);
-            expect(renamedDeviceQueryResponse.data.picoOne._id).to.equal(picoId);
-            expect(renamedDeviceQueryResponse.data.picoOne.name).to.equal(newName);
-
-
+            expect(renamedDeviceQueryResponse.data.picoFermOne).to.exist;
+            expect(renamedDeviceQueryResponse.data.picoFermOne.serialNumber).to.equal(picoFerm1Uid);
+            expect(renamedDeviceQueryResponse.data.picoFermOne._id).to.equal(picoId);
+            expect(renamedDeviceQueryResponse.data.picoFermOne.name).to.equal(newName);
         });
     });
-
+/*
     describe(' # Session', () => {
         it('Allows to get a new session ID', async () => {
             const response = await server.inject({

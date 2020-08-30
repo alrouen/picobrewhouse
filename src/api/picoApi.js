@@ -2,7 +2,8 @@ const Joi = require('joi');
 const { getLogger } = require('../utils/logger');
 const { manageExceptions, returnSchemaError, BaseApi } = require('./baseApi');
 const { corsOrigin } = require("../services/config/config");
-const { PicoRegistration, PicoSessionType, PicoRequiredAction, PicoState, PicoFirmware, findDictKeyByValue } = require('../models/picoDictionnary');
+const { PicoRegistration, PicoSessionType, PicoRequiredAction, PicoState, PicoStateRequest,
+    PicoFirmware, findDictKeyByValue } = require('../models/picoDictionnary');
 
 const logger = getLogger('PICO-API');
 
@@ -13,7 +14,7 @@ const Register_QueryParametersSchema = Joi.object().keys({
 
 const ChangeState_QueryParametersSchema = Joi.object().keys({
     picoUID: Joi.string().alphanum().required(),
-    state: Joi.number().integer().valid(...Object.values(PicoState)).required()
+    state: Joi.number().integer().valid(...Object.values(PicoStateRequest)).required()
 }).label('ChangeState-Query-Parameters');
 
 const CheckFirmware_QueryParametersSchema = Joi.object().keys({
@@ -92,12 +93,12 @@ class PicoApi extends BaseApi {
     changeState (request, h) {
         const uid = request.query.picoUID;
         const rawState = request.query.state
-        const state = findDictKeyByValue(PicoState, rawState);
+        const state = findDictKeyByValue(PicoStateRequest, rawState);
         logger.info(`changeState from ${uid} with new state: ${state}`);
 
         //TODO : when receiving "Ready" state, check for any brewing session related to this machine and set it to "brewing finished"
 
-        return this.service.updateState(uid, state)
+        return this.service.updateState(uid, PicoState[state])
             .then(r => {
                 if(rawState === PicoState.Ready) {
                     console.log(r);

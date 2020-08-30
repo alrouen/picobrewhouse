@@ -9,7 +9,7 @@ const PicoFermSchema = new mongoose.Schema({
     serialNumber: { type: String, required: true, index: { unique: true } },
     firmwareVersion: { type: String, default:'' },
     picoSessionId: mongoose.ObjectId,
-    currentState: { type: String, default: findDictKeyByValue(PicoFermState, PicoFermState.NothingTodo) },
+    currentState: { type: String, default: PicoFermState.NothingTodo },
     ...AuditSchemaDef,
 });
 

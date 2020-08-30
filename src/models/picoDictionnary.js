@@ -9,6 +9,16 @@ const PicoFirmware = {
 }
 
 const PicoState = {
+    Ready:"ready",
+    Brewing:"brewing",
+    SousVide:"sousVide",
+    RackBeer:"rackBeer",
+    Rinse:"rinse",
+    DeepClean:"deepClean",
+    DeScale:"deScale"
+};
+
+const PicoStateRequest = {
     Ready:2,
     Brewing:3,
     SousVide:4,
@@ -69,7 +79,7 @@ const PicoBrewingSessionState = {
 const findDictKeyByValue = (obj, value) => Object.keys(obj).find(k => obj[k] === value);
 
 module.exports = {
-    PicoRegistration, PicoFirmware, PicoState, PicoSessionType, PicoRequiredAction,
+    PicoRegistration, PicoFirmware, PicoState, PicoStateRequest, PicoSessionType, PicoRequiredAction,
     PicoFermRegistration, PicoFermFirmware, PicoFermState, PicoFermStateResponse,
     PicoBrewingSessionState,
     findDictKeyByValue

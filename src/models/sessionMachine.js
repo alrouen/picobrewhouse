@@ -9,10 +9,10 @@ const canArchive = (context, event, condMeta) => {
 
 const validationMachine = Machine({
     id:'sessionProcess',
-    initial:'NewSession',
+    initial:'Idle',
     context:{},
     states:{
-        NewSession:{},
+        Idle:{},
         Brewing:{},
         DeepClean:{},
         SousVide:{},

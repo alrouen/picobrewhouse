@@ -127,7 +127,9 @@ class PicoFermApi extends BaseApi {
         return this.service.getDeviceBySerialNumber(uid)
             .then(p =>
                 resolveNewState(p._id, p.currentState, p.picoSessionId)
-                    .then(state => h.response(PicoFermStateResponse[findDictKeyByValue(PicoFermState, state)]).code(200))
+                    .then(state =>
+                        h.response(PicoFermStateResponse[findDictKeyByValue(PicoFermState, state)]).code(200)
+                    )
             )
             .catch(err => manageExceptions(err));
     }
