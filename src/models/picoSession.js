@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { createAudit, AuditSchemaDef } = require('./mixins/audit');
-const { PicoBrewingSessionState, PicoSessionType, findDictKeyByValue } = require('./picoDictionnary');
+const { PicoSessionState, PicoSessionType, findDictKeyByValue } = require('./picoDictionnary');
 const { BaseModel } = require('./baseModel');
 const { randomString, fahrenheitToCelcius } = require('../utils/utils');
 
@@ -21,13 +21,23 @@ const FermentationDataset = {
     ts: { type: Date, required: true }
 };
 
+const BrewingParameters = {
+    fermentationDuration:{ type: Number, default:6 },
+    startOfFermentation:{ type: Date },
+    coldCrashingDuration: { type: Number, default:1 },
+    startOfColdCrashing: { type: Date },
+    carbonatingDuration: { type: Number, default:14 },
+    startOfCarbonating: { type: Date },
+};
+
 const PicoSessionSchema = new mongoose.Schema({
     name: { type: String, required: true },
     sessionType: { type: String, enum: Object.keys(PicoSessionType) },
     sessionId: { type: String, unique: true},
     recipeId: mongoose.ObjectId,
     brewerId: { type: mongoose.ObjectId, required: true },
-    status: { type: String, enum: Object.values(PicoBrewingSessionState) },
+    status: { type: String, enum: Object.values(PicoSessionState), default:PicoSessionState.Idle },
+    brewingParameters: BrewingParameters,
     brewingLog: [BrewingDataset],
     fermentationLog: [FermentationDataset],
     ...AuditSchemaDef,

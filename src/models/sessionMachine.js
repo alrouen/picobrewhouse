@@ -1,111 +1,113 @@
 const { Machine } = require('xstate');
-const moment = require('moment');
 
-const {} = require('./picoDictionnary');
-
-const canArchive = (context, event, condMeta) => {
-    return isAdminAndNotOwner(context.role, context.isOwner);
+const PicoSessionState = {
+    Idle:"Idle",
+    Brewing:"Brewing",
+    Fermenting:"Fermenting",
+    ColdCrashing:"ColdCrashing",
+    Carbonating:"Carbonating",
+    DeepCleaning:"DeepCleaning",
+    ColdBrewing:"ColdBrewing",
+    SousVideCooking:"SousVideCooking",
+    Finished:"Finished"
 };
 
-const validationMachine = Machine({
+const PicoSessionEvent = {
+    START_BREWING:"START_BREWING",
+    START_MANUALBREW:"START_MANUALBREW",
+    START_DEEPCLEAN:"START_DEEPCLEAN",
+    START_SOUSVIDE:"START_SOUSVIDE",
+    START_COLDBREW:"START_COLDBREW",
+    START_FERMENTING:"START_FERMENTING",
+    START_COLDCRASHING:"START_COLDCRASHING",
+    START_CARBONATING:"START_CARBONATING",
+    END_SESSION:"END_SESSION",
+    CANCEL_SESSION:"CANCEL_SESSION"
+};
+
+const isFermentingDone = (context, event, condMeta) => {
+    return context.fermentingRemainingSec <= 0;
+};
+
+const isColdCrashingDone = (context, event, condMeta) => {
+    return context.coldCrashingRemainingSec <= 0;
+};
+
+const isCarbonatingDone = (context, event, condMeta) => {
+    return context.carbonatingRemainingSec <= 0;
+};
+
+const sessionMachine = Machine({
     id:'sessionProcess',
     initial:'Idle',
-    context:{},
-    states:{
-        Idle:{},
-        Brewing:{},
-        DeepClean:{},
-        SousVide:{},
-        ColdBrew:{},
-        ManualBrew:{}
-    },
-    on: {}
-});
-
-const getNextStatus = (event, {currentStatus, pastEvents, isOwner, role, ai4euSsoUserId}) => {
-    return validationMachine
-        .withContext({currentStatus, pastEvents, isOwner, role, ai4euSsoUserId})
-        .transition(currentStatus, event).value;
-};
-
-module.exports = {};
-
-/***
-
- const validationMachine = Machine({
-    id:'validationProcess',
-    initial:'draft',
-    context: {
-        role:MemberRole.none,
-        isOwner:false
+    context:{
+        fermentingRemainingSec:0,
+        coldCrashingRemainingSec:0,
+        carbonatingRemainingSec:0,
     },
     states:{
-        draft:{
-            on: {
-                SUBMIT: [
-                    { target:PublicationStatus.submitted, cond: canSubmit },
-                    { target: 'notAllowed' }
-                ]
+        Idle:{
+            on:{
+                START_BREWING:[{target:PicoSessionState.Brewing}],
+                START_MANUALBREW:[{target:PicoSessionState.Brewing}],
+                START_DEEPCLEAN:[{target:PicoSessionState.DeepCleaning}],
+                START_SOUSVIDE:[{target:PicoSessionState.SousVideCooking}],
+                START_COLDBREW:[{target:PicoSessionState.ColdBrewing}]
             }
         },
-        submitted:{
-            on: {
-                FOR_REVIEW: [
-                    { target:PublicationStatus.reviewing, cond: canReview },
-                    { target: 'notAllowed' }
-                ]
+        Brewing:{
+            on:{
+                START_FERMENTING:[{target:PicoSessionState.Fermenting}]
             }
         },
-        reviewing:{
-            on: {
-                ACCEPTED: [
-                    { target:PublicationStatus.published, cond: canPublishOrReject },
-                    { target: 'notAllowed' }
+        Fermenting:{
+            on:{
+                START_COLDCRASHING:[
+                    {target:PicoSessionState.ColdCrashing, cond: isFermentingDone}
                 ],
-                REJECTED: [
-                    { target:PublicationStatus.draft, cond: canPublishOrReject },
-                    { target: 'notAllowed' }
-                ],
-                FOR_REVIEW: [
-                    { target:PublicationStatus.reviewing, cond: canReAssignReview },
-                    { target: 'notAllowed' }
+                START_CARBONATING:[
+                    {target:PicoSessionState.Carbonating, cond: isFermentingDone}
                 ]
             }
         },
-        published:{
-            on: {
-                UNPUBLISH: [
-                    { target:PublicationStatus.unpublished, cond: canUnpublish },
-                    { target: 'notAllowed' }
-                ],
+        ColdCrashing:{
+            on:{
+                START_CARBONATING:[{target:PicoSessionState.Carbonating, cond: isColdCrashingDone}]
             }
         },
-        unpublished:{
-            on: {
-                REPUBLISH: [
-                    { target: PublicationStatus.published, cond: canRePublish },
-                    { target: 'notAllowed' }
-                ]
+        Carbonating:{
+            on:{
+                END_SESSION:[{target:PicoSessionState.Finished, cond: isCarbonatingDone}]
             }
         },
-        archived:{
-            on: {
-                RESET: [
-                    { target: PublicationStatus.draft, cond: canReset },
-                    { target: 'notAllowed' }
-                ]
+        DeepCleaning:{
+            on:{
+                END_SESSION:[{target:PicoSessionState.Finished}]
             }
         },
-        notAllowed:{
+        ColdBrewing:{
+            on:{
+                END_SESSION:[{target:PicoSessionState.Finished}]
+            }
+        },
+        SousVideCooking:{
+            on:{
+                END_SESSION:[{target:PicoSessionState.Finished}]
+            }
+        },
+        Finished:{
             type:'final'
         }
     },
     on: {
-        ARCHIVE: [
-            { target: PublicationStatus.archived, cond: canArchive },
-            { target: 'notAllowed' }
-        ]
+        CANCEL_SESSION:[{target:PicoSessionState.Finished}]
     }
 });
 
- ***/
+const getNextStatus = (event, {currentState, fermentingRemainingSec, coldCrashingRemainingSec, carbonatingRemainingSec}) => {
+    return sessionMachine
+        .withContext({fermentingRemainingSec, coldCrashingRemainingSec, carbonatingRemainingSec})
+        .transition(currentState, event).value;
+};
+
+module.exports = { PicoSessionState, PicoSessionEvent, getNextStatus };

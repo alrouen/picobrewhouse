@@ -6,7 +6,7 @@ const PicoRegistration = {
 const PicoFirmware = {
     UpdateAvailable:`#T#`,
     NoUpdateAvailable:`#F#`
-}
+};
 
 const PicoState = {
     Ready:"ready",
@@ -51,36 +51,26 @@ const PicoFermRegistration = {
 const PicoFermFirmware = {
     UpdateAvailable:`#1#`,
     NoUpdateAvailable:`#0#`
-}
+};
 
 const PicoFermState = {
     NothingTodo:"nothingTodo",
     InProgressSendingData:"inProgressSendingData",
     InProgressError:"inProgressError",
     Completed:"completed"
-}
+};
 
 const PicoFermStateResponse = {
     NothingTodo:`#2,4#`,
     InProgressSendingData:`#10,0#`,
     InProgressError:`#10,16#`,
     Completed:`#2,16#`
-}
-
-const PicoBrewingSessionState = {
-    Designing:"designing",
-    Brewing:"brewing",
-    Fermenting:"fermenting",
-    ColdCrashing:"coldCrashing",
-    Carbonating:"carbonating",
-    Finished:"finished"
-}
+};
 
 const findDictKeyByValue = (obj, value) => Object.keys(obj).find(k => obj[k] === value);
 
 module.exports = {
     PicoRegistration, PicoFirmware, PicoState, PicoStateRequest, PicoSessionType, PicoRequiredAction,
     PicoFermRegistration, PicoFermFirmware, PicoFermState, PicoFermStateResponse,
-    PicoBrewingSessionState,
     findDictKeyByValue
-}
+};
