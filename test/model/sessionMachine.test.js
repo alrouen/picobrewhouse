@@ -46,14 +46,54 @@ describe('## Pico Session state machine', () => {
         }
         expect(getNextStatus(PicoSessionEvent.START_COLDCRASHING, context)).to.equal(PicoSessionState.Fermenting);
 
-        const fermentingDoneContext = {
+        const doneContext = {
             ...context,
             fermentingRemainingSec:0
         }
-        expect(getNextStatus(PicoSessionEvent.START_COLDCRASHING, fermentingDoneContext)).to.equal(PicoSessionState.ColdCrashing);
+        expect(getNextStatus(PicoSessionEvent.START_COLDCRASHING, doneContext)).to.equal(PicoSessionState.ColdCrashing);
     });
 
+    it('Can start a carbonating after fermenting only if fermentation time expired', () => {
+        const context = {
+            currentState:PicoSessionState.Fermenting,
+            ...defaultContext
+        }
+        expect(getNextStatus(PicoSessionEvent.START_CARBONATING, context)).to.equal(PicoSessionState.Fermenting);
 
+        const doneContext = {
+            ...context,
+            fermentingRemainingSec:0
+        }
+        expect(getNextStatus(PicoSessionEvent.START_CARBONATING, doneContext)).to.equal(PicoSessionState.Carbonating);
+    });
+
+    it('Can start a carbonating after cold crashing only if cold crashing time expired', () => {
+        const context = {
+            currentState:PicoSessionState.ColdCrashing,
+            ...defaultContext
+        }
+        expect(getNextStatus(PicoSessionEvent.START_CARBONATING, context)).to.equal(PicoSessionState.ColdCrashing);
+
+        const doneContext = {
+            ...context,
+            coldCrashingRemainingSec:0
+        }
+        expect(getNextStatus(PicoSessionEvent.START_CARBONATING, doneContext)).to.equal(PicoSessionState.Carbonating);
+    });
+
+    it('Can end session after carbonating only if carbonating time expired', () => {
+        const context = {
+            currentState:PicoSessionState.Carbonating,
+            ...defaultContext
+        }
+        expect(getNextStatus(PicoSessionEvent.END_SESSION, context)).to.equal(PicoSessionState.Carbonating);
+
+        const doneContext = {
+            ...context,
+            carbonatingRemainingSec:0
+        }
+        expect(getNextStatus(PicoSessionEvent.END_SESSION, doneContext)).to.equal(PicoSessionState.Finished);
+    });
 
     it('Can start a cold brewing session', () => {
         const context = {
@@ -107,6 +147,12 @@ describe('## Pico Session state machine', () => {
         }
         const nextStatus = getNextStatus(PicoSessionEvent.START_COLDCRASHING, context);
         expect(nextStatus).to.equal(PicoSessionState.Idle);
+    });
+
+    it('Can end session after DeepCleaning, ColdBrewing and SousVideCooking', () => {
+        expect(getNextStatus(PicoSessionEvent.END_SESSION, {currentState:PicoSessionState.DeepCleaning})).to.equal(PicoSessionState.Finished);
+        expect(getNextStatus(PicoSessionEvent.END_SESSION, {currentState:PicoSessionState.ColdBrewing})).to.equal(PicoSessionState.Finished);
+        expect(getNextStatus(PicoSessionEvent.END_SESSION, {currentState:PicoSessionState.SousVideCooking})).to.equal(PicoSessionState.Finished);
     });
 
     it('Can cancel session at any state', () => {
