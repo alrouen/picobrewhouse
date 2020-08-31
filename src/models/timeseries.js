@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { BaseModel } = require('./baseModel');
-const { randomString, fahrenheitToCelcius } = require('../utils/utils');
+const { randomString, fahrenheitToCelcius, psiTomBar } = require('../utils/utils');
 
 const BrewingData = {
     wt: { type: Number, required: true}, // wort temperature
@@ -56,3 +56,6 @@ class FermentationTimeSeries extends Timeseries {
 }
 
 module.exports = { BrewingTimeseries, FermentationTimeSeries };
+
+
+// Inspired by : https://www.mongodb.com/blog/post/time-series-data-and-mongodb-part-2-schema-design-best-practices
