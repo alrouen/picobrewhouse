@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { createAudit, AuditSchemaDef } = require('./mixins/audit');
-const { PicoSessionState, PicoSessionType, findDictKeyByValue } = require('./picoDictionnary');
+const { PicoSessionType, findDictKeyByValue } = require('./picoDictionnary');
+const { PicoSessionState } = require('./sessionMachine');
 const { BaseModel } = require('./baseModel');
 const { randomString, fahrenheitToCelcius } = require('../utils/utils');
 

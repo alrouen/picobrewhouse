@@ -10,6 +10,7 @@ const Server = require('../../src/server');
 // Data model for GraphQL API
 const PicoFerm = require('../../src/models/picoFerm');
 const PicoSession = require('../../src/models/picoSession');
+const { FermentationTimeSeries } = require('../../src/models/timeseries');
 
 // Pico API dictionnary
 const { PicoFermRegistration, PicoFermFirmware, PicoFermState, PicoFermStateResponse,
@@ -26,15 +27,17 @@ chai.config.includeStack = true; // To display error on tests failures
 // Model class
 const picoFerm = new PicoFerm();
 const picoSession = new PicoSession();
+const fermentationTS = new FermentationTimeSeries();
 
 const sessionPattern = new RegExp(/#([a-z0-9]{20})#\r\n/);
 
-const picoFermApi = new PicoFermApi(picoFerm, picoSession);
+const picoFermApi = new PicoFermApi(picoFerm, picoSession, fermentationTS);
 
 // GraphQL schema composition with Mongoose
 const schemaBuilder = new MongooseGraphQLSchemaBuilder('picobrewhousedb-test', [
     (db) => picoFerm.buildModelGraphQLSchema(db),
-    (db) => picoSession.buildModelGraphQLSchema(db)
+    (db) => picoSession.buildModelGraphQLSchema(db),
+    (db) => fermentationTS.buildModelGraphQLSchema(db)
 ]);
 
 const server = new Server({});

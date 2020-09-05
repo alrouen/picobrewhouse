@@ -10,6 +10,7 @@ const Server = require('./server');
 const PicoFerm = require('./models/picoFerm');
 const Pico = require('./models/pico');
 const PicoSession = require('./models/picoSession');
+const { BrewingTimeseries, FermentationTimeSeries, Timeseries } = require('./models/timeseries');
 
 // REST API for devices
 const { PicoApi } = require('./api/picoApi');
@@ -22,17 +23,21 @@ const ProcessLogger = getLogger('PROCESS');
 const picoFerm = new PicoFerm();
 const pico = new Pico();
 const picoSession = new PicoSession();
+const brewingTS = new BrewingTimeseries();
+const fermentationTS = new FermentationTimeSeries();
 
 // GraphQL schema composition with Mongoose
 const schemaBuilder = new MongooseGraphQLSchemaBuilder('picobrewhousedb', [
     (db) => picoFerm.buildModelGraphQLSchema(db),
     (db) => pico.buildModelGraphQLSchema(db),
-    (db) => picoSession.buildModelGraphQLSchema(db)
+    (db) => picoSession.buildModelGraphQLSchema(db),
+    (db) => fermentationTS.buildModelGraphQLSchema(db),
+    (db) => brewingTS.buildModelGraphQLSchema(db),
 ]);
 
 // Rest API class, available as Hapi plugin, with injection of required model class for access to persistence methods
-const picoApi = new PicoApi(pico, picoSession);
-const picoFermApi = new PicoFermApi(picoFerm, picoSession);
+const picoApi = new PicoApi(pico, picoSession, brewingTS);
+const picoFermApi = new PicoFermApi(picoFerm, picoSession, fermentationTS);
 const firmwareApi = new FirmwareApi();
 
 // Hapi HTTP server

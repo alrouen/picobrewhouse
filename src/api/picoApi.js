@@ -55,10 +55,11 @@ const ErrorReport_QueryParametersSchema = Joi.object().keys({
 }).label('GetActionsNeeded-Query-Parameters');
 
 class PicoApi extends BaseApi {
-    constructor(service, sessionService, prefix = '/API/pico') {
+    constructor(service, sessionService, brewingTS, prefix = '/API/pico') {
         super(prefix, {cors: true, origin: corsOrigin});
         this.service = service;
         this.sessionService = sessionService;
+        this.brewingTS = brewingTS;
     }
 
     /**

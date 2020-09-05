@@ -1,4 +1,5 @@
 const Joi = require('joi');
+const mongoose = require('mongoose');
 const { getLogger } = require('../utils/logger');
 const { manageExceptions, returnSchemaError, BaseApi } = require('./baseApi');
 const { PicoFermRegistration, PicoFermFirmware, PicoFermState, PicoFermStateResponse, PicoBrewingSessionState, findDictKeyByValue } = require('../models/picoDictionnary');
@@ -39,10 +40,11 @@ const LogDataSet_QueryParametersSchema = Joi.object().keys({
 
 
 class PicoFermApi extends BaseApi {
-    constructor(service, sessionService, prefix = '/API/PicoFerm') {
+    constructor(service, sessionService, fermentationTS, prefix = '/API/PicoFerm') {
         super(prefix, { cors: true, origin: corsOrigin});
         this.service = service;
         this.sessionService = sessionService;
+        this.fermentationTS = fermentationTS;
     }
 
     /**
@@ -153,7 +155,14 @@ class PicoFermApi extends BaseApi {
         const voltage = request.query.voltage;
         const data = request.query.data;
         logger.info(`logDataSet from ${uid}, with rate ${rate}, voltage: ${voltage} and data: ${data}`);
-        return h.response(`#10,0#`).code(200);
+        const j = JSON.parse(data);
+        const payload = {t: j[0].s1, p: j[0].s2, v:voltage};
+        return this.fermentationTS.addFermentationData(new mongoose.mongo.ObjectId('56cb91bdc3464f14678934ca'), payload)
+            .then(_ => {
+                return h.response(`#10,0#`).code(200);
+            })
+            .catch(err => manageExceptions(err));
+
     }
 
     catchAll(request, h) {
