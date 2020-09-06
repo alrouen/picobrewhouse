@@ -6,9 +6,9 @@ const randomString = (length = 20, chars = '0123456789abcdefghijklmnopqrstuvwxyz
 }
 
  // (32 °F − 32) × 5/9 = 0 °C
-const fahrenheitToCelcius = (f) => (f-32)*0.555556;
+const fahrenheitToCelcius = (f) => ((f-32)*0.555556).toFixed(3);
 
 // 1 PSI = 68,9476 mBar ( or hPa)
-const psiTomBar = (psi) => psi*68.9476;
+const psiTomBar = (psi) => (psi*68.9476).toFixed(3);
 
 module.exports = { randomString, fahrenheitToCelcius, psiTomBar };

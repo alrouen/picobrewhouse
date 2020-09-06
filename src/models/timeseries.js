@@ -3,9 +3,10 @@ const moment = require('moment');
 const { BaseModel } = require('./baseModel');
 const { fahrenheitToCelcius, psiTomBar } = require('../utils/utils');
 
-const DataPointsPerDocument = 4;
+const DataPointsPerDocument = 100;
 
 const BaseData = {
+    _id: false,
     _ts: { type: Number, required: true } // unix timestamp
 };
 
@@ -52,20 +53,18 @@ class Timeseries extends BaseModel {
         this.dataType = dataType;
     }
 
-    async _addRecord(sessionId, dt, payload) {
+    async _addRecord(sessionId, dt, data) {
         return this._model.findOneAndUpdate(
             {sessionId, dt, t:this.dataType, nbs: {$lt: DataPointsPerDocument}},
             {
-                $push: { data: payload},
-                $min: { first: payload._ts },
-                $max: { last: payload._ts },
+                $push: { data },
+                $min: { first: data._ts },
+                $max: { last: data._ts },
                 $inc: { nbs: 1}
             },
             {new: true, upsert: true}
         );
     }
-
-    //$setOnInsert: { dt, t:this.dataType, sessionId },
 }
 
 class BrewingTimeseries extends Timeseries {
@@ -80,15 +79,19 @@ class BrewingTimeseries extends Timeseries {
         this.mutations = {};
     }
 
+    _timeStamp() {
+        return ((moment().valueOf())/1000).toFixed(0);
+    }
+
     async addBrewingData(sessionId, {wt, tt, s, e = "", err, t, ss}) {
-        const payload = {
+        const dt = moment().startOf('minute').toDate(); // group data per minutes
+        const data = {
             wt:fahrenheitToCelcius(wt),
             tt:fahrenheitToCelcius(tt),
             s, e, err, t, ss,
-            _ts:moment().valueOf()
+            _ts:this._timeStamp()
         };
-        const dt = moment().startOf('minute').toDate(); // group data per minutes
-        return this._addRecord(sessionId, dt, payload);
+        return this._addRecord(sessionId, dt, data);
     }
 }
 class FermentationTimeSeries extends Timeseries {
@@ -103,19 +106,29 @@ class FermentationTimeSeries extends Timeseries {
         this.mutations = {};
     }
 
-    async addFermentationData(sessionId, {t, p, v}) {
-        const payload = {
-            t:fahrenheitToCelcius(t),
-            p:psiTomBar(p),
-            v,
-            _ts:moment().valueOf()
-        };
+    _timeStamp(index, rate) {
+        // Data points are sent every hour, but collected every "n" minutes (rate)
+        // We do not need to store milliseconds for the timestamps
+        return (
+            (
+                moment().subtract(60-(index*rate), 'minutes').valueOf()
+            )/1000
+        ).toFixed(0);
+    }
+
+    async addLastHourFermentationData(sessionId, rate, voltage, lastHourData) {
         const dt = moment().startOf('day').toDate(); // group data per day
-        return this._addRecord(sessionId, dt, payload);
+
+        const lastHourDataNormalized = lastHourData.map((d, i) => ({
+                t:fahrenheitToCelcius(d.s1),
+                p:psiTomBar(d.s2),
+                v:voltage, // Voltage measure is only done once per hour
+                _ts:this._timeStamp(i, rate)
+            })
+        );
+
+        return lastHourDataNormalized.map(async d => await this._addRecord(sessionId, dt, d));
     }
 }
 
 module.exports = { Timeseries, BrewingTimeseries, FermentationTimeSeries };
-
-
-// Inspired by : https://www.mongodb.com/blog/post/time-series-data-and-mongodb-part-2-schema-design-best-practices

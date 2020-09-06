@@ -156,13 +156,10 @@ class PicoFermApi extends BaseApi {
         const data = request.query.data;
         logger.info(`logDataSet from ${uid}, with rate ${rate}, voltage: ${voltage} and data: ${data}`);
         const j = JSON.parse(data);
-        const payload = {t: j[0].s1, p: j[0].s2, v:voltage};
-        return this.fermentationTS.addFermentationData(new mongoose.mongo.ObjectId('56cb91bdc3464f14678934ca'), payload)
-            .then(_ => {
-                return h.response(`#10,0#`).code(200);
-            })
-            .catch(err => manageExceptions(err));
 
+        return this.fermentationTS.addLastHourFermentationData(new mongoose.mongo.ObjectId('56cb91bdc3464f14678934ca'), rate, voltage, j)
+            .then(_ => h.response(`#10,0#`).code(200))
+            .catch(err => manageExceptions(err))
     }
 
     catchAll(request, h) {
