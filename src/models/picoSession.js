@@ -1,26 +1,11 @@
 const mongoose = require('mongoose');
+const moment = require('moment');
 const { createAudit, AuditSchemaDef } = require('./mixins/audit');
-const { PicoSessionType, findDictKeyByValue } = require('./picoDictionnary');
-const { PicoSessionState } = require('./sessionMachine');
+const { PicoSessionType } = require('./picoDictionnary');
+const { PicoSessionState, getNextStatus } = require('./sessionMachine');
 const { BaseModel } = require('./baseModel');
-const { randomString, fahrenheitToCelcius } = require('../utils/utils');
-
-const BrewingDataset = {
-    wortTemperature: { type: Number, required: true},
-    thermoblockTemperature: { type: Number, required: true },
-    step: { type: String, required: true },
-    event: String,
-    error: { type: Number, required: true },
-    timeLeft: { type: Number, required: true },
-    shutScale: { type: Number, required: true },
-    ts: { type: Date, required: true }
-};
-
-const FermentationDataset = {
-    temperature: { type: Number, required: true },
-    pressure: { type: Number, required: true },
-    ts: { type: Date, required: true }
-};
+const { RecordNotFound } = require('../apiException');
+const { randomString } = require('../utils/utils');
 
 const BrewingParameters = {
     fermentationDuration:{ type: Number, default:6 },
@@ -31,6 +16,13 @@ const BrewingParameters = {
     startOfCarbonating: { type: Date },
 };
 
+const StatusHistory = {
+    _id: false,
+    event: { type: String, required: true },
+    previousState: { type: String, required: true },
+    eventDate: { type: Date, required: true },
+}
+
 const PicoSessionSchema = new mongoose.Schema({
     name: { type: String, required: true },
     sessionType: { type: String, enum: Object.keys(PicoSessionType) },
@@ -38,9 +30,8 @@ const PicoSessionSchema = new mongoose.Schema({
     recipeId: mongoose.ObjectId,
     brewerId: { type: mongoose.ObjectId, required: true },
     status: { type: String, enum: Object.values(PicoSessionState), default:PicoSessionState.Idle },
+    statusHistory: [StatusHistory],
     brewingParameters: BrewingParameters,
-    brewingLog: [BrewingDataset],
-    fermentationLog: [FermentationDataset],
     ...AuditSchemaDef,
 });
 
@@ -87,54 +78,60 @@ class PicoSession extends BaseModel {
         };
     }
 
+    async getById(id) {
+        return this._model.findById(id).then(s => {
+            if(!!!s) throw new RecordNotFound();
+            return s;
+        });
+    }
+
     async createSession(brewerId, sessionType) {
         let audit = createAudit();
         let doc = new this._model({
-            name:sessionType,
+            name:`${sessionType} ${moment().format('YYYY-MM-DD HH:mm')}`,
             sessionType,
             sessionId:randomString(),
             brewerId,
+            statusHistory:[],
             audit
         });
         return doc.save();
     }
 
-    async getById(id) {
-        return this._model.findById(id);
+    async updateSessionStatus(id, event) {
+        return this.getById(id)
+            .then(s => {
+                const currentState = s.currentState;
+                const { carbonatingDuration, coldCrashingDuration, fermentationDuration,
+                    startOfCarbonating, startOfColdCrashing, startOfFermentation } = s.brewingParameters;
+
+                // compute, in seconds, the remaing time between now and expected duration since start date
+                const remainingSec = (start, duration) => {
+
+                    if(!!!start || !!!duration) {
+                        return 31536000; // 1 year of seconds... why ? because it's a lot.
+                    }
+                    return (moment(start).add(duration, 'days').unix() - moment().unix());
+                }
+
+                const fermentingRemainingSec = remainingSec(startOfFermentation, fermentationDuration);
+                const coldCrashingRemainingSec = remainingSec(startOfColdCrashing, coldCrashingDuration);
+                const carbonatingRemainingSec = remainingSec(startOfCarbonating, carbonatingDuration);
+
+                const nextState = getNextStatus(event, { currentState, fermentingRemainingSec, coldCrashingRemainingSec, carbonatingRemainingSec });
+
+                if(currentState === nextState) return Promise.resolve(s);
+
+                return this._model.updateOne(
+                    { _id:id },
+                    {
+                        status:nextState,
+                        $push: { statusHistory: { event, previousState: currentState, eventDate:new Date() }},
+                        "audit.updatedAt": new Date()
+                    }
+                );
+            })
     }
-
-    async endSessionOfBrewerId(brewerId) {
-        return this._model.updateMany(
-            { brewerId, brewingStatus: { $ne : PicoBrewingSessionState.Finished }},
-            { brewingStatus: PicoBrewingSessionState.Finished }
-        );
-    }
-
-    async addBrewingDataSet({brewerId, sessionType, sessionId, wortTemperature, thermoblockTemperature, step, event = null, error, timeLeft, shutScale}) {
-        let dataset = {
-            wortTemperature:fahrenheitToCelcius(wortTemperature),
-            thermoblockTemperature:fahrenheitToCelcius(thermoblockTemperature),
-            step,
-            error,
-            timeLeft,
-            shutScale,
-            ts:new Date()
-        }
-        if(!!event) {
-            dataset.event = event;
-        }
-
-        return this._model.findOneAndUpdate(
-            {brewerId, sessionType, sessionId},
-            {$push: { brewingLog: dataset}, $set: { brewingStatus: PicoBrewingSessionState.Brewing, "audit.updatedAt": new Date() } },
-            {new: true}
-        );
-
-    }
-
-    /*async addFermentationDataSet({picoFermId, }) {
-
-    }*/
 }
 
 
