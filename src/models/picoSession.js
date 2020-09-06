@@ -85,6 +85,27 @@ class PicoSession extends BaseModel {
         });
     }
 
+    async getBySessionId(sessionId) {
+        return this._model.findOne({sessionId}).then(s => {
+            if(!!!s) throw new RecordNotFound();
+            return s;
+        });
+    }
+
+    async getBySessionIdAndBrewerId(sessionId, brewerId) {
+        return this._model.findOne({sessionId, brewerId}).then(s => {
+            if(!!!s) throw new RecordNotFound();
+            return s;
+        });
+    }
+
+    async getByBrewerAndSessionStatus(brewerId, status) {
+        return this._model.findOne({brewerId, status}).then(s => {
+            if(!!!s) throw new RecordNotFound();
+            return s;
+        });
+    }
+
     async createSession(brewerId, sessionType) {
         let audit = createAudit();
         let doc = new this._model({
@@ -98,8 +119,8 @@ class PicoSession extends BaseModel {
         return doc.save();
     }
 
-    async updateSessionStatus(id, event) {
-        return this.getById(id)
+    async updateSessionStatus(sessionId, brewerId, event) {
+        return this.getBySessionIdAndBrewerId(sessionId, brewerId)
             .then(s => {
                 const currentState = s.currentState;
                 const { carbonatingDuration, coldCrashingDuration, fermentationDuration,
@@ -130,10 +151,8 @@ class PicoSession extends BaseModel {
                         "audit.updatedAt": new Date()
                     }
                 );
-            })
+            });
     }
 }
-
-
 
 module.exports = PicoSession

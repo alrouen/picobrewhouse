@@ -4,6 +4,7 @@ const { manageExceptions, returnSchemaError, BaseApi } = require('./baseApi');
 const { corsOrigin } = require("../services/config/config");
 const { PicoRegistration, PicoSessionType, PicoRequiredAction, PicoState, PicoStateRequest,
     PicoFirmware, findDictKeyByValue } = require('../models/picoDictionnary');
+const { PicoSessionEvent } = require('../models/sessionMachine');
 
 const logger = getLogger('PICO-API');
 
@@ -205,8 +206,33 @@ class PicoApi extends BaseApi {
         const sesType = findDictKeyByValue(PicoSessionType, request.query.sesType);
         const event = "event" in request.query ? request.query.event : null;
         logger.info(`logSession from ${uid} for this session ${sesId} and type: ${sesType}`);
+
+        const sesTypeToEvent = (st) => {
+            switch(st) {
+                case PicoSessionType.Brewing:
+                case PicoSessionType.ManualBrew:
+                    return PicoSessionEvent.START_BREWING;
+                case PicoSessionType.DeepClean:
+                    return PicoSessionEvent.START_DEEPCLEAN;
+                default:
+                    return PicoSessionEvent.DO_NOTHING;
+            }
+        }
+
+        const subActions = async () => {
+            const pico = await this.service.getDeviceBySerialNumber(uid);
+            //const session = await this.sessionService.getBySessionId(sesId);
+            const event = sesTypeToEvent(request.query.sesType);
+            await this.sessionService.updateSessionStatus()
+        }
+
         return this.service.getDeviceBySerialNumber(uid)
-            .then(p => {
+            .then(pico => {
+                this.sessionService.getBySessionId(sesId).then(session => {
+
+                })
+
+
                 return this.sessionService.addBrewingDataSet({
                     brewerId:p._id,
                     sessionType: sesType,

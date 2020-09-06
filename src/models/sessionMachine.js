@@ -22,7 +22,8 @@ const PicoSessionEvent = {
     START_COLDCRASHING:"START_COLDCRASHING",
     START_CARBONATING:"START_CARBONATING",
     END_SESSION:"END_SESSION",
-    CANCEL_SESSION:"CANCEL_SESSION"
+    CANCEL_SESSION:"CANCEL_SESSION",
+    DO_NOTHING:"DO_NOTHING"
 };
 
 const isFermentingDone = (context, event, condMeta) => {
@@ -52,7 +53,8 @@ const sessionMachine = Machine({
                 START_MANUALBREW:[{target:PicoSessionState.Brewing}],
                 START_DEEPCLEAN:[{target:PicoSessionState.DeepCleaning}],
                 START_SOUSVIDE:[{target:PicoSessionState.SousVideCooking}],
-                START_COLDBREW:[{target:PicoSessionState.ColdBrewing}]
+                START_COLDBREW:[{target:PicoSessionState.ColdBrewing}],
+                DO_NOTHING:[{target:PicoSessionState.Idle}]
             }
         },
         Brewing:{
