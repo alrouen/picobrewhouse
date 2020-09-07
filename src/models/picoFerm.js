@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { createAudit, AuditSchemaDef } = require('./mixins/audit');
-const { PicoFermState, findDictKeyByValue } = require('./picoDictionnary');
+const { PicoFermState } = require('./picoDictionnary');
 const { RecordNotFound } = require('../apiException');
 const { BaseModel } = require('./baseModel');
 
