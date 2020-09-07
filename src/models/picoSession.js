@@ -150,7 +150,7 @@ class PicoSession extends BaseModel {
                         $push: { statusHistory: { event, previousState: currentState, eventDate:new Date() }},
                         "audit.updatedAt": new Date()
                     }
-                );
+                ).then(_ => nextState);
             });
     }
 }

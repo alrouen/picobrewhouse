@@ -4,7 +4,7 @@ const { manageExceptions, returnSchemaError, BaseApi } = require('./baseApi');
 const { corsOrigin } = require("../services/config/config");
 const { PicoRegistration, PicoSessionType, PicoRequiredAction, PicoState, PicoStateRequest,
     PicoFirmware, findDictKeyByValue } = require('../models/picoDictionnary');
-const { PicoSessionEvent } = require('../models/sessionMachine');
+const { PicoSessionEvent, PicoSessionState } = require('../models/sessionMachine');
 
 const logger = getLogger('PICO-API');
 
@@ -219,33 +219,33 @@ class PicoApi extends BaseApi {
             }
         }
 
-        const subActions = async () => {
+        const getSessionStatus = async () => {
             const pico = await this.service.getDeviceBySerialNumber(uid);
-            //const session = await this.sessionService.getBySessionId(sesId);
+            const session = await this.sessionService.getBySessionId(sesId);
             const event = sesTypeToEvent(request.query.sesType);
-            await this.sessionService.updateSessionStatus()
+            return this.sessionService.updateSessionStatus(session.sessionId, pico._id, event);
         }
 
-        return this.service.getDeviceBySerialNumber(uid)
-            .then(pico => {
-                this.sessionService.getBySessionId(sesId).then(session => {
-
-                })
-
-
-                return this.sessionService.addBrewingDataSet({
-                    brewerId:p._id,
-                    sessionType: sesType,
-                    sessionId:sesId,
-                    wortTemperature:wort,
-                    thermoblockTemperature:therm,
-                    step,
-                    event:event,
-                    error,
-                    timeLeft,
-                    shutScale
-                }).then(s => h.response(`\r\n\r\n`).code(200))
+        getSessionStatus()
+            .then(status => {
+                if(status === PicoSessionState.Brewing) {
+                    return this.brewingTS.addBrewingData(
+                        session._id,
+                        {
+                            wt:wort,
+                            tt:therm,
+                            s:step,
+                            e:event,
+                            err:error,
+                            t:timeLeft,
+                            ss:shutScale
+                        }
+                    );
+                } else {
+                    return Promise.resolve()
+                }
             })
+            .then(_ => h.response(`\r\n\r\n`).code(200))
             .catch(err => manageExceptions(err));
     }
 
