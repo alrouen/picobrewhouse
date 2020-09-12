@@ -144,7 +144,7 @@ class PicoSession extends BaseModel {
                 if(currentState === nextState) return Promise.resolve(s);
 
                 return this._model.updateOne(
-                    { _id:id },
+                    { _id:s._id },
                     {
                         status:nextState,
                         $push: { statusHistory: { event, previousState: currentState, eventDate:new Date() }},

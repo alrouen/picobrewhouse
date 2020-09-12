@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha 'test/**/*.test.js'",
-    "test-int": "mocha 'test/**/*.int.js'",
+    "test-int": "mocha --timeout 5000 'test/**/*.int.js'",
     "test-single": "mocha $1"
   },
   "author": "",

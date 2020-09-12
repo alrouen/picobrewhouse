@@ -223,14 +223,17 @@ class PicoApi extends BaseApi {
             const pico = await this.service.getDeviceBySerialNumber(uid);
             const session = await this.sessionService.getBySessionId(sesId);
             const event = sesTypeToEvent(request.query.sesType);
-            return this.sessionService.updateSessionStatus(session.sessionId, pico._id, event);
+
+            const newStatus = await this.sessionService.updateSessionStatus(session.sessionId, pico._id, event);
+            return { sessionId: session._id, status:newStatus };
         }
 
-        getSessionStatus()
-            .then(status => {
+        return getSessionStatus()
+            .then(({ sessionId, status }) => {
+
                 if(status === PicoSessionState.Brewing) {
                     return this.brewingTS.addBrewingData(
-                        session._id,
+                        sessionId,
                         {
                             wt:wort,
                             tt:therm,

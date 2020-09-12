@@ -44,6 +44,23 @@ const server = new Server({});
 var graphQLServer;
 var tmpSession;
 
+const wait = async (ms = 500) => {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
+}
+
+const logData = async (uid, sesId, wort, therm, step, error, sesType, timeLeft, shutScale, event = null) => {
+    let url = `/API/pico/log?uid=${uid}&&sesId=${sesId}&wort=${wort}&therm=${therm}&step=${step}&error=${error}&sesType=${sesType}&timeLeft=${timeLeft}&shutScale=${shutScale}`
+    if(!!event) {
+        url = `${url}&event=${event}`;
+    }
+    return server.inject({
+        method: 'GET',
+        url
+    });
+};
+
 describe('## PICO API integration test', () => {
     before((done) => {
         schemaBuilder.composeSchemas().then(s => {
@@ -59,15 +76,15 @@ describe('## PICO API integration test', () => {
 
     after((done) => {
         const connection = schemaBuilder.connection;
-        if(!!connection) {
+        /*if(!!connection) {
             connection.db.dropDatabase().then(_ => {
                 connection.close().then(_ => {
                     server.stop().then(done);
                 });
             });
-        } else {
+        } else {*/
             Promise.resolve().then(done);
-        }
+        //}
     });
 
     describe(' # Device registration', () => {
@@ -270,6 +287,33 @@ describe('## PICO API integration test', () => {
             expect(session.sessionId).to.equal(tmpSession);
             expect(session.brewerId).to.equal(picoId);
             expect(session.sessionType).to.equal(findDictKeyByValue(PicoSessionType, PicoSessionType.ManualBrew));
+        });
+    });
+
+    describe(' # Session logging', () => {
+        it('should allow to log brewing session data', async () => {
+            let response = await logData(pico2Uid, tmpSession, 77, 301, 'Waiting Instructions', 0, PicoSessionType.ManualBrew, 0, 0.16, 'Waiting Instructions');
+            expect(response.statusCode).to.equal(200);
+            await wait();
+
+            response = await logData(pico2Uid, tmpSession, 77, 301, 'Waiting Instructions', 0, PicoSessionType.ManualBrew, 0, 0.16, 'Waiting Instructions');
+            expect(response.statusCode).to.equal(200);
+            await wait();
+
+            response = await logData(pico2Uid, tmpSession, 78, 299, 'Step 1', 0, PicoSessionType.ManualBrew, 0, 0.16, 'Step 1');
+            expect(response.statusCode).to.equal(200);
+            await wait();
+
+            response = await logData(pico2Uid, tmpSession, 82, 299, 'Step 1', 0, PicoSessionType.ManualBrew, 594, 0.16);
+            expect(response.statusCode).to.equal(200);
+            await wait();
+
+            response = await logData(pico2Uid, tmpSession, 124, 299, 'Step 1', 0, PicoSessionType.ManualBrew, 71, 0.16);
+            expect(response.statusCode).to.equal(200);
+            await wait();
+
+            response = await logData(pico2Uid, tmpSession, 161, 299, 'Waiting Instructions', 0, PicoSessionType.ManualBrew, 0, 0.16, 'Waiting Instructions');
+            expect(response.statusCode).to.equal(200);
         });
     });
 });
