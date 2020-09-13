@@ -140,8 +140,42 @@ class FermentationTimeSeries extends Timeseries {
     }
 
     buildResolver(model, modelTC) {
+
+        const fermentingTSBySessionId = (model, sessionId) => {
+            return model.aggregate([
+                { $match: { sessionId: mongoose.Types.ObjectId(sessionId), t: TimeSeriesType.Fermenting } }, // we look for all documents matching sessionId and related to brewing data
+                { $sort: {first:1 }}, // we then sort them by "first" timestamp
+                { $unwind: "$data"}, // we then explode in data item into several sub doc
+                { $group: {_id: "$sessionId", data: {$push: "$data"} } } // to finally regroup them by push each data item into a final data array
+            ]).then(r => r.length > 0 ? r[0] : []);
+        }
+
+        const outputTypeName = `fermentingTSBySessionId${modelTC.getTypeName()}Payload`;
+        const outputType = modelTC.schemaComposer.getOrCreateOTC(outputTypeName, (t) => {
+            t.addFields({
+                recordId: {
+                    type: 'MongoID',
+                    description: 'document ID',
+                },
+                record: {
+                    type: '[fermentingData]',
+                    description: 'aggregated brewing data'
+                }
+            });
+        });
+
+        modelTC.addResolver({
+            name: 'fermentingTSBySessionId',
+            type: outputType,
+            args: { sessionId: 'MongoID!', newName: 'String' },
+            resolve: async ({ source, args, context, info }) => {
+                return fermentingTSBySessionId(model, args.sessionId)
+                    .then(r => ({recordId: args.sessionId, record: r.data}) );
+            },
+        });
+
         this.queries = {
-            fermentingTSById: modelTC.getResolver('findById'),
+            fermentingTSBySessionId: modelTC.getResolver('fermentingTSBySessionId'),
         }
         this.mutations = {};
     }

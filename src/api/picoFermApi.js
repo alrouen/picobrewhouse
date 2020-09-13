@@ -115,6 +115,8 @@ class PicoFermApi extends BaseApi {
 
         const resolveNewState = async (picoFermId, currentState, sessionId) => {
 
+            return Promise.resolve(PicoFermState.InProgressSendingData);
+            /* TODO: Broken since session refactoring
             let newState = currentState;
 
             if(!!sessionId) {
@@ -123,7 +125,7 @@ class PicoFermApi extends BaseApi {
                 return this.service.updateStateById(picoFermId, findDictKeyByValue(PicoFermState, newState)).then(p => newState);
             } else {
                 return Promise.resolve(newState);
-            }
+            }*/
         }
 
         return this.service.getDeviceBySerialNumber(uid)
