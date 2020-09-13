@@ -5,6 +5,11 @@ const { fahrenheitToCelcius, psiTomBar } = require('../utils/utils');
 
 const DataPointsPerDocument = 100;
 
+const TimeSeriesType = {
+    Brewing:"brewing",
+    Fermenting:"fermenting"
+}
+
 const BaseData = {
     _id: false, // no _id for sub document
     _ts: { type: Number, required: true } // unix timestamp
@@ -33,7 +38,7 @@ const TimeSeriesSchema = {
     t:{ type: String, required: true }, // data type
     dt:{ type: Date, required: true }, // date time group
     nbs: { type: Number, required: true }, // number of samples
-    first: { type: Number, required: true }, // unix timestamp of first record
+    first: { type: Number, required: true, index: true }, // unix timestamp of first record
     last: { type: Number, required: true }, // unix timestamp of last record
 };
 
@@ -69,12 +74,47 @@ class Timeseries extends BaseModel {
 
 class BrewingTimeseries extends Timeseries {
     constructor() {
-        super({schema: BrewingTimeSeriesSchema, dataType:"brewing"});
+        super({schema: BrewingTimeSeriesSchema, dataType:TimeSeriesType.Brewing});
     }
 
     buildResolver(model, modelTC) {
+
+        const brewingTSBySessionId = (model, sessionId) => {
+            return model.aggregate([
+                { $match: { sessionId: mongoose.Types.ObjectId(sessionId), t: TimeSeriesType.Brewing } }, // we look for all documents matching sessionId and related to brewing data
+                { $sort: {first:1 }}, // we then sort them by "first" timestamp
+                { $unwind: "$data"}, // we then explode in data item into several sub doc
+                { $group: {_id: "$sessionId", data: {$push: "$data"} } } // to finally regroup them by push each data item into a final data array
+            ]).then(r => r.length > 0 ? r[0] : []);
+        }
+
+        const outputTypeName = `brewingTSBySessionId${modelTC.getTypeName()}Payload`;
+        const outputType = modelTC.schemaComposer.getOrCreateOTC(outputTypeName, (t) => {
+            t.addFields({
+                recordId: {
+                    type: 'MongoID',
+                    description: 'document ID',
+                },
+                record: {
+                    type: '[brewingData]',
+                    description: 'aggregated brewing data'
+                }
+            });
+        });
+
+        modelTC.addResolver({
+            name: 'brewingTSBySessionId',
+            type: outputType,
+            args: { sessionId: 'MongoID!', newName: 'String' },
+            resolve: async ({ source, args, context, info }) => {
+                return brewingTSBySessionId(model, args.sessionId)
+                    .then(r => ({recordId: args.sessionId, record: r.data}) );
+            },
+        });
+
+
         this.queries = {
-            brewingTSById: modelTC.getResolver('findById'),
+            brewingTSBySessionId: modelTC.getResolver('brewingTSBySessionId'),
         }
         this.mutations = {};
     }
@@ -96,7 +136,7 @@ class BrewingTimeseries extends Timeseries {
 }
 class FermentationTimeSeries extends Timeseries {
     constructor() {
-        super({schema: FermentationTimeSeriesSchema, dataType:"fermenting"});
+        super({schema: FermentationTimeSeriesSchema, dataType:TimeSeriesType.Fermenting});
     }
 
     buildResolver(model, modelTC) {

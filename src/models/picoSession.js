@@ -26,7 +26,7 @@ const StatusHistory = {
 const PicoSessionSchema = new mongoose.Schema({
     name: { type: String, required: true },
     sessionType: { type: String, enum: Object.keys(PicoSessionType) },
-    sessionId: { type: String, unique: true},
+    picoSessionId: { type: String, index: { unique: true } },
     recipeId: mongoose.ObjectId,
     brewerId: { type: mongoose.ObjectId, required: true },
     status: { type: String, enum: Object.values(PicoSessionState), default:PicoSessionState.Idle },
@@ -64,7 +64,7 @@ class PicoSession extends BaseModel {
         });
 
         /**
-         * query { picoSessionMany {name, sessionType, sessionId, brewerId, brewingStatus, recipeId, brewingLog{wortTemperature, thermoblockTemperature, step, shutScale, ts, timeLeft, event, error} , audit{createdAt, updatedAt}}}
+         * query { picoSessionMany {name, sessionType, picoSessionId, brewerId, brewingStatus, recipeId, brewingLog{wortTemperature, thermoblockTemperature, step, shutScale, ts, timeLeft, event, error} , audit{createdAt, updatedAt}}}
          */
 
         this.queries = {
@@ -85,15 +85,15 @@ class PicoSession extends BaseModel {
         });
     }
 
-    async getBySessionId(sessionId) {
-        return this._model.findOne({sessionId}).then(s => {
+    async getByPicoSessionId(picoSessionId) {
+        return this._model.findOne({picoSessionId}).then(s => {
             if(!!!s) throw new RecordNotFound();
             return s;
         });
     }
 
-    async getBySessionIdAndBrewerId(sessionId, brewerId) {
-        return this._model.findOne({sessionId, brewerId}).then(s => {
+    async getByPicoSessionIdAndBrewerId(picoSessionId, brewerId) {
+        return this._model.findOne({picoSessionId, brewerId}).then(s => {
             if(!!!s) throw new RecordNotFound();
             return s;
         });
@@ -111,7 +111,7 @@ class PicoSession extends BaseModel {
         let doc = new this._model({
             name:`${sessionType} ${moment().format('YYYY-MM-DD HH:mm')}`,
             sessionType,
-            sessionId:randomString(),
+            picoSessionId:randomString(),
             brewerId,
             statusHistory:[],
             audit
@@ -119,10 +119,10 @@ class PicoSession extends BaseModel {
         return doc.save();
     }
 
-    async updateSessionStatus(sessionId, brewerId, event) {
-        return this.getBySessionIdAndBrewerId(sessionId, brewerId)
+    async updateSessionStatusByPicoSessionAndBrewerId(picoSessionId, brewerId, event) {
+        return this.getByPicoSessionIdAndBrewerId(picoSessionId, brewerId)
             .then(s => {
-                const currentState = s.currentState;
+                const currentState = s.status;
                 const { carbonatingDuration, coldCrashingDuration, fermentationDuration,
                     startOfCarbonating, startOfColdCrashing, startOfFermentation } = s.brewingParameters;
 
@@ -141,7 +141,7 @@ class PicoSession extends BaseModel {
 
                 const nextState = getNextStatus(event, { currentState, fermentingRemainingSec, coldCrashingRemainingSec, carbonatingRemainingSec });
 
-                if(currentState === nextState) return Promise.resolve(s);
+                if(currentState === nextState) return Promise.resolve(currentState);
 
                 return this._model.updateOne(
                     { _id:s._id },

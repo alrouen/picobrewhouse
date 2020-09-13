@@ -16,6 +16,8 @@ const { BrewingTimeseries } = require('../../src/models/timeseries');
 const { PicoRegistration, PicoFirmware, PicoState, PicoStateRequest, PicoSessionType,
     findDictKeyByValue } = require('../../src/models/picoDictionnary');
 
+const { PicoSessionState, PicoSessionEvent } = require('../../src/models/sessionMachine');
+
 // REST API for devices
 const { PicoApi } = require('../../src/api/picoApi');
 
@@ -43,6 +45,7 @@ const schemaBuilder = new MongooseGraphQLSchemaBuilder('picobrewhousedb-test', [
 const server = new Server({});
 var graphQLServer;
 var tmpSession;
+var tmpSession_id;
 
 const wait = async (ms = 500) => {
     return new Promise((resolve) => {
@@ -76,15 +79,15 @@ describe('## PICO API integration test', () => {
 
     after((done) => {
         const connection = schemaBuilder.connection;
-        /*if(!!connection) {
+        if(!!connection) {
             connection.db.dropDatabase().then(_ => {
                 connection.close().then(_ => {
                     server.stop().then(done);
                 });
             });
-        } else {*/
-            Promise.resolve().then(done);
-        //}
+        } else {
+            Promise.resolve(done);
+        }
     });
 
     describe(' # Device registration', () => {
@@ -260,9 +263,9 @@ describe('## PICO API integration test', () => {
             const { query } = createTestClient(graphQLServer);
             const QUERY = gql`
                 query {
-                    picoSessionOne(filter:{sessionId:"${tmpSession}"}) { 
+                    picoSessionOne(filter:{picoSessionId:"${tmpSession}"}) { 
                         name, 
-                        sessionId,
+                        picoSessionId,
                         sessionType,
                         brewerId,
                         audit { createdAt, updatedAt }
@@ -284,14 +287,12 @@ describe('## PICO API integration test', () => {
             expect(response.data.picoSessionOne).to.exist;
 
             const session = response.data.picoSessionOne;
-            expect(session.sessionId).to.equal(tmpSession);
+            expect(session.picoSessionId).to.equal(tmpSession);
             expect(session.brewerId).to.equal(picoId);
             expect(session.sessionType).to.equal(findDictKeyByValue(PicoSessionType, PicoSessionType.ManualBrew));
         });
-    });
 
-    describe(' # Session logging', () => {
-        it('should allow to log brewing session data', async () => {
+        it('Allows to log brewing session data', async () => {
             let response = await logData(pico2Uid, tmpSession, 77, 301, 'Waiting Instructions', 0, PicoSessionType.ManualBrew, 0, 0.16, 'Waiting Instructions');
             expect(response.statusCode).to.equal(200);
             await wait();
@@ -315,5 +316,53 @@ describe('## PICO API integration test', () => {
             response = await logData(pico2Uid, tmpSession, 161, 299, 'Waiting Instructions', 0, PicoSessionType.ManualBrew, 0, 0.16, 'Waiting Instructions');
             expect(response.statusCode).to.equal(200);
         });
+
+        it('Allows to review session data', async () => {
+            const { query } = createTestClient(graphQLServer);
+            const QUERY = gql`
+                query {
+                    picoSessionOne(filter:{picoSessionId:"${tmpSession}"}) {
+                        _id, 
+                        name, 
+                        picoSessionId,
+                        sessionType,
+                        brewerId,
+                        status,
+                        statusHistory { event, previousState, eventDate },
+                        statusHistory { event, previousState, eventDate },
+                        brewingParameters { fermentationDuration, startOfFermentation, coldCrashingDuration, startOfColdCrashing, carbonatingDuration, startOfCarbonating },
+                        audit { createdAt, updatedAt }
+                    }
+                }
+            `;
+
+            const response = await query({ query: QUERY });
+            expect(response.data.picoSessionOne).to.exist;
+            const session = response.data.picoSessionOne;
+
+            expect(session.status).to.equal(PicoSessionState.Brewing);
+            expect(session.statusHistory.length).to.equal(1);
+            expect(session.statusHistory[0].previousState).to.equal(PicoSessionState.Idle);
+            expect(session.statusHistory[0].event).to.equal(PicoSessionEvent.START_BREWING);
+            tmpSession_id = session._id;
+        });
+
+        it('Allows to retrieve aggregated data', async () => {
+            const { query } = createTestClient(graphQLServer);
+            const QUERY = gql`
+                query {
+                    brewingTSBySessionId(sessionId:"${tmpSession_id}") 
+                    {recordId, record {wt, tt, s, err, e, t, _ts}}
+                }
+            `;
+
+            const response = await query({ query: QUERY });
+            expect(response.data.brewingTSBySessionId).to.exist;
+            const data = response.data.brewingTSBySessionId.record;
+            expect(data.length).to.equal(6)
+            console.log(data);
+
+        })
+
     });
 });

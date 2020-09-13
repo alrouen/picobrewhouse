@@ -174,7 +174,7 @@ class PicoApi extends BaseApi {
         logger.info(`getSession from ${uid} for this session type: ${sesType}`);
         return this.service.getDeviceBySerialNumber(uid)
             .then(p => {
-                return this.sessionService.createSession(p._id, sesType).then(s => h.response(`#${s.sessionId}#\r\n`).code(200));
+                return this.sessionService.createSession(p._id, sesType).then(s => h.response(`#${s.picoSessionId}#\r\n`).code(200));
             })
             .catch(err => manageExceptions(err));
     }
@@ -221,16 +221,15 @@ class PicoApi extends BaseApi {
 
         const getSessionStatus = async () => {
             const pico = await this.service.getDeviceBySerialNumber(uid);
-            const session = await this.sessionService.getBySessionId(sesId);
+            const session = await this.sessionService.getByPicoSessionId(sesId);
             const event = sesTypeToEvent(request.query.sesType);
 
-            const newStatus = await this.sessionService.updateSessionStatus(session.sessionId, pico._id, event);
+            const newStatus = await this.sessionService.updateSessionStatusByPicoSessionAndBrewerId(session.picoSessionId, pico._id, event);
             return { sessionId: session._id, status:newStatus };
         }
 
         return getSessionStatus()
             .then(({ sessionId, status }) => {
-
                 if(status === PicoSessionState.Brewing) {
                     return this.brewingTS.addBrewingData(
                         sessionId,
