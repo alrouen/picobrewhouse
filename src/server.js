@@ -4,7 +4,7 @@ const Vision = require('@hapi/vision');
 const HapiSwagger = require('hapi-swagger');
 const Qs = require('qs');
 const { getLogger } = require('./utils/logger');
-const { corsOrigin, port } = require("../config");
+const { corsOrigin, port } = require('./services/config/config');
 const Pack = require('../package');
 
 const ServerLogger = getLogger('SERVER');

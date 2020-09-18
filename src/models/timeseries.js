@@ -197,7 +197,41 @@ class FermentationTimeSeries extends Timeseries {
             })
         );
 
-        return lastHourDataNormalized.map(async d => await this._addRecord(sessionId, dt, d));
+        return await lastHourDataNormalized.reduce(
+            async (acc, dataNorm) => {
+                const previousResults = await acc;
+                const newResult = await this._addRecord(sessionId, dt, dataNorm)
+                return [...previousResults, newResult];
+            }, []
+        );
+
+        //TODO : this line do not enforce sequential processing, so data can be insert in random order
+        // Better option here : https://advancedweb.hu/how-to-use-async-functions-with-array-map-in-javascript/#parallel-processing
+        // return lastHourDataNormalized.map(async d => await this._addRecord(sessionId, dt, d));
+
+        /*
+        *
+            const arr = [1, 2, 3];
+
+            const res = await arr.reduce(async (memo, v) => {
+                const results = await memo;
+                console.log(`S ${v}`)
+                await sleep(10);
+                console.log(`F ${v}`);
+                return [...results, v + 1];
+            }, []);
+
+            // S 1
+            // F 1
+            // S 2
+            // F 2
+            // S 3
+            // F 3
+
+            console.log(res);
+            // 2,3,4
+        *
+        * */
     }
 }
 

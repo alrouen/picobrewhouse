@@ -10,10 +10,16 @@ const expectedConfigKeys = [
 ];
 
 expectedConfigKeys.forEach(k => {
-    if (k in jsonConfig && !!jsonConfig[k]) {
-        configMap[k] = jsonConfig[k];
+    const v = process.env[`PCB_${k}`];
+
+    if(!!!v) {
+        if (k in jsonConfig && !!jsonConfig[k]) {
+            configMap[k] = jsonConfig[k];
+        } else {
+            throw new Error(`Missing ${k} key/value in config.json!`);
+        }
     } else {
-        throw new Error(`Missing ${k} key/value in config.json!`);
+        configMap[k] = v;
     }
 });
 

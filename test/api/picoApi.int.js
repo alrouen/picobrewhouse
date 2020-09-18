@@ -360,7 +360,8 @@ describe('## PICO API integration test', () => {
             expect(response.data.brewingTSBySessionId).to.exist;
             const data = response.data.brewingTSBySessionId.record;
             expect(data.length).to.equal(6)
-            console.log(data);
+            expect(data[4].tt).to.equal(148.333);
+            //console.log(data);
 
         })
 
