@@ -10,7 +10,7 @@ const expectedConfigKeys = [
 ];
 
 expectedConfigKeys.forEach(k => {
-    const v = process.env[`PCB_${k}`];
+    const v = process.env[`PBH_${k}`];
 
     if(!!!v) {
         if (k in jsonConfig && !!jsonConfig[k]) {
