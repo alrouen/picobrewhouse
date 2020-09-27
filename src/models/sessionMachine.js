@@ -106,10 +106,10 @@ const sessionMachine = Machine({
     }
 });
 
-const getNextStatus = (event, {currentState, fermentingRemainingSec, coldCrashingRemainingSec, carbonatingRemainingSec}) => {
+const getNextState = (event, {currentState, fermentingRemainingSec, coldCrashingRemainingSec, carbonatingRemainingSec}) => {
     return sessionMachine
         .withContext({fermentingRemainingSec, coldCrashingRemainingSec, carbonatingRemainingSec})
         .transition(currentState, event).value;
 };
 
-module.exports = { PicoSessionState, PicoSessionEvent, getNextStatus };
+module.exports = { PicoSessionState, PicoSessionEvent, getNextState };

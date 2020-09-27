@@ -1,11 +1,13 @@
 const mongoose = require('mongoose');
 const moment = require('moment');
+const { EnumTypeComposer } = require('graphql-compose');
+const { ForbiddenError } = require('apollo-server-hapi')
 const { createAudit, AuditSchemaDef } = require('./mixins/audit');
 const { PicoSessionType } = require('./picoDictionnary');
-const { PicoSessionState, getNextStatus } = require('./sessionMachine');
+const { PicoSessionState, PicoSessionEvent, getNextState } = require('./sessionMachine');
 const { BaseModel } = require('./baseModel');
 const { RecordNotFound } = require('../apiException');
-const { randomString } = require('../utils/utils');
+const { randomString, remainingSec } = require('../utils/utils');
 
 const BrewingParameters = {
     fermentationDuration:{ type: Number, default:6 },
@@ -35,6 +37,30 @@ const PicoSessionSchema = new mongoose.Schema({
     ...AuditSchemaDef,
 });
 
+const getSessionNextState = (session, newEvent) => {
+    const currentState = session.status;
+    const { carbonatingDuration, coldCrashingDuration, fermentationDuration,
+        startOfCarbonating, startOfColdCrashing, startOfFermentation } = session.brewingParameters;
+
+    const fermentingRemainingSec = remainingSec(startOfFermentation, fermentationDuration);
+    const coldCrashingRemainingSec = remainingSec(startOfColdCrashing, coldCrashingDuration);
+    const carbonatingRemainingSec = remainingSec(startOfCarbonating, carbonatingDuration);
+
+    const nextState = getNextState(newEvent, { currentState, fermentingRemainingSec, coldCrashingRemainingSec, carbonatingRemainingSec });
+    return {previousState:currentState, nextState};
+};
+
+const updateSessionStatus = (model, sessionId, event, previousState, nextState) => {
+    return model.updateOne(
+        { _id:sessionId },
+        {
+            status:nextState,
+            $push: { statusHistory: { event, previousState: previousState, eventDate:new Date() }},
+            "audit.updatedAt": new Date()
+        }
+    )
+}
+
 class PicoSession extends BaseModel {
     constructor() {
         super({modelName: 'Picosessions', schema: PicoSessionSchema, collectionName: 'picosessions'});
@@ -63,6 +89,57 @@ class PicoSession extends BaseModel {
             }
         });
 
+        const setNewEvent = (model, id, event) => {
+            return model.findById(id).then(s => {
+                if(!!!s) throw new ForbiddenError("invalid session");
+                const { previousState, nextState } = getSessionNextState(s, event);
+
+                if(previousState === nextState) throw new ForbiddenError("invalid event");
+                return updateSessionStatus(model, id, event, previousState, nextState).then(_ => nextState);
+            })
+        };
+
+        const sendEventOutputTypeName = `SendEventById${modelTC.getTypeName()}Payload`;
+        const sendEventOutputType = modelTC.schemaComposer.getOrCreateOTC(sendEventOutputTypeName, (t) => {
+            t.addFields({
+                recordId: {
+                    type: 'MongoID',
+                    description: 'document ID',
+                },
+                newState: {
+                    type: 'String',
+                    description: 'new session state'
+                }
+            });
+        });
+
+        modelTC.schemaComposer.getOrCreateITC(`SendEventById${modelTC.getTypeName()}Enum`, (t) => {
+            t.addFields({
+                event:EnumTypeComposer.create( `enum SessionEvent {
+                    START_BREWING 
+                    START_MANUALBREW 
+                    START_DEEPCLEAN 
+                    START_SOUSVIDE 
+                    START_COLDBREW 
+                    START_FERMENTING 
+                    START_COLDCRASHING
+                    END_SESSION
+                    CANCEL_SESSION
+                }`, modelTC.schemaComposer)
+            })
+        });
+
+        modelTC.addResolver({
+            name:'sendEventById',
+            type: sendEventOutputType,
+            args: { _id: 'MongoID!', event: 'SessionEvent!'},
+            resolve: async ({ source, args, context, info }) => {
+                return setNewEvent(model, args._id, args.event)
+                    .then((newState) => ({recordId: args._id, newState: newState}))
+            }
+        });
+
+
         /**
          * query { picoSessionMany {name, sessionType, picoSessionId, brewerId, brewingStatus, recipeId, brewingLog{wortTemperature, thermoblockTemperature, step, shutScale, ts, timeLeft, event, error} , audit{createdAt, updatedAt}}}
          */
@@ -70,11 +147,12 @@ class PicoSession extends BaseModel {
         this.queries = {
             picoSessionById: modelTC.getResolver('findById'),
             picoSessionOne: modelTC.getResolver('findOne'),
-            picoSessionMany: modelTC.getResolver('findMany')
+            picoSessionMany: modelTC.getResolver('findMany'),
         }
         this.mutations = {
             picoSessionRenameOne:modelTC.getResolver('renameOneById'),
-            picoSessionRemoveById: modelTC.getResolver('removeById')
+            picoSessionRemoveById: modelTC.getResolver('removeById'),
+            picoSessionSendEventBy: modelTC.getResolver('sendEventById')
         };
     }
 
@@ -122,35 +200,9 @@ class PicoSession extends BaseModel {
     async updateSessionStatusByPicoSessionAndBrewerId(picoSessionId, brewerId, event) {
         return this.getByPicoSessionIdAndBrewerId(picoSessionId, brewerId)
             .then(s => {
-                const currentState = s.status;
-                const { carbonatingDuration, coldCrashingDuration, fermentationDuration,
-                    startOfCarbonating, startOfColdCrashing, startOfFermentation } = s.brewingParameters;
-
-                // compute, in seconds, the remaing time between now and expected duration since start date
-                const remainingSec = (start, duration) => {
-
-                    if(!!!start || !!!duration) {
-                        return 31536000; // 1 year of seconds... why ? because it's a lot.
-                    }
-                    return (moment(start).add(duration, 'days').unix() - moment().unix());
-                }
-
-                const fermentingRemainingSec = remainingSec(startOfFermentation, fermentationDuration);
-                const coldCrashingRemainingSec = remainingSec(startOfColdCrashing, coldCrashingDuration);
-                const carbonatingRemainingSec = remainingSec(startOfCarbonating, carbonatingDuration);
-
-                const nextState = getNextStatus(event, { currentState, fermentingRemainingSec, coldCrashingRemainingSec, carbonatingRemainingSec });
-
-                if(currentState === nextState) return Promise.resolve(currentState);
-
-                return this._model.updateOne(
-                    { _id:s._id },
-                    {
-                        status:nextState,
-                        $push: { statusHistory: { event, previousState: currentState, eventDate:new Date() }},
-                        "audit.updatedAt": new Date()
-                    }
-                ).then(_ => nextState);
+                const { previousState, nextState } = getSessionNextState(s, event);
+                if(previousState === nextState) return Promise.resolve(previousState);
+                return updateSessionStatus(this._model, s._id, event, previousState, nextState).then(_ => nextState);
             });
     }
 }

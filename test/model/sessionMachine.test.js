@@ -1,7 +1,7 @@
 const chai = require('chai');
 const expect = require('chai').expect;
 
-const { getNextStatus, PicoSessionEvent, PicoSessionState } = require('../../src/models/sessionMachine');
+const { getNextState, PicoSessionEvent, PicoSessionState } = require('../../src/models/sessionMachine');
 
 chai.config.includeStack = true; // To display error on tests failures
 
@@ -17,7 +17,7 @@ describe('## Pico Session state machine', () => {
             currentState:PicoSessionState.Idle,
             ...defaultContext
         }
-        const nextStatus = getNextStatus(PicoSessionEvent.START_MANUALBREW, context);
+        const nextStatus = getNextState(PicoSessionEvent.START_MANUALBREW, context);
         expect(nextStatus).to.equal(PicoSessionState.Brewing);
     });
 
@@ -26,7 +26,7 @@ describe('## Pico Session state machine', () => {
             currentState:PicoSessionState.Idle,
             ...defaultContext
         }
-        const nextStatus = getNextStatus(PicoSessionEvent.START_BREWING, context);
+        const nextStatus = getNextState(PicoSessionEvent.START_BREWING, context);
         expect(nextStatus).to.equal(PicoSessionState.Brewing);
     });
 
@@ -35,7 +35,7 @@ describe('## Pico Session state machine', () => {
             currentState:PicoSessionState.Brewing,
             ...defaultContext
         }
-        const nextStatus = getNextStatus(PicoSessionEvent.START_FERMENTING, context);
+        const nextStatus = getNextState(PicoSessionEvent.START_FERMENTING, context);
         expect(nextStatus).to.equal(PicoSessionState.Fermenting);
     });
 
@@ -44,13 +44,13 @@ describe('## Pico Session state machine', () => {
             currentState:PicoSessionState.Fermenting,
             ...defaultContext
         }
-        expect(getNextStatus(PicoSessionEvent.START_COLDCRASHING, context)).to.equal(PicoSessionState.Fermenting);
+        expect(getNextState(PicoSessionEvent.START_COLDCRASHING, context)).to.equal(PicoSessionState.Fermenting);
 
         const doneContext = {
             ...context,
             fermentingRemainingSec:0
         }
-        expect(getNextStatus(PicoSessionEvent.START_COLDCRASHING, doneContext)).to.equal(PicoSessionState.ColdCrashing);
+        expect(getNextState(PicoSessionEvent.START_COLDCRASHING, doneContext)).to.equal(PicoSessionState.ColdCrashing);
     });
 
     it('Can start a carbonating after fermenting only if fermentation time expired', () => {
@@ -58,13 +58,13 @@ describe('## Pico Session state machine', () => {
             currentState:PicoSessionState.Fermenting,
             ...defaultContext
         }
-        expect(getNextStatus(PicoSessionEvent.START_CARBONATING, context)).to.equal(PicoSessionState.Fermenting);
+        expect(getNextState(PicoSessionEvent.START_CARBONATING, context)).to.equal(PicoSessionState.Fermenting);
 
         const doneContext = {
             ...context,
             fermentingRemainingSec:0
         }
-        expect(getNextStatus(PicoSessionEvent.START_CARBONATING, doneContext)).to.equal(PicoSessionState.Carbonating);
+        expect(getNextState(PicoSessionEvent.START_CARBONATING, doneContext)).to.equal(PicoSessionState.Carbonating);
     });
 
     it('Can start a carbonating after cold crashing only if cold crashing time expired', () => {
@@ -72,13 +72,13 @@ describe('## Pico Session state machine', () => {
             currentState:PicoSessionState.ColdCrashing,
             ...defaultContext
         }
-        expect(getNextStatus(PicoSessionEvent.START_CARBONATING, context)).to.equal(PicoSessionState.ColdCrashing);
+        expect(getNextState(PicoSessionEvent.START_CARBONATING, context)).to.equal(PicoSessionState.ColdCrashing);
 
         const doneContext = {
             ...context,
             coldCrashingRemainingSec:0
         }
-        expect(getNextStatus(PicoSessionEvent.START_CARBONATING, doneContext)).to.equal(PicoSessionState.Carbonating);
+        expect(getNextState(PicoSessionEvent.START_CARBONATING, doneContext)).to.equal(PicoSessionState.Carbonating);
     });
 
     it('Can end session after carbonating only if carbonating time expired', () => {
@@ -86,13 +86,13 @@ describe('## Pico Session state machine', () => {
             currentState:PicoSessionState.Carbonating,
             ...defaultContext
         }
-        expect(getNextStatus(PicoSessionEvent.END_SESSION, context)).to.equal(PicoSessionState.Carbonating);
+        expect(getNextState(PicoSessionEvent.END_SESSION, context)).to.equal(PicoSessionState.Carbonating);
 
         const doneContext = {
             ...context,
             carbonatingRemainingSec:0
         }
-        expect(getNextStatus(PicoSessionEvent.END_SESSION, doneContext)).to.equal(PicoSessionState.Finished);
+        expect(getNextState(PicoSessionEvent.END_SESSION, doneContext)).to.equal(PicoSessionState.Finished);
     });
 
     it('Can start a cold brewing session', () => {
@@ -100,7 +100,7 @@ describe('## Pico Session state machine', () => {
             currentState:PicoSessionState.Idle,
             ...defaultContext
         }
-        const nextStatus = getNextStatus(PicoSessionEvent.START_COLDBREW, context);
+        const nextStatus = getNextState(PicoSessionEvent.START_COLDBREW, context);
         expect(nextStatus).to.equal(PicoSessionState.ColdBrewing);
     });
 
@@ -109,7 +109,7 @@ describe('## Pico Session state machine', () => {
             currentState:PicoSessionState.Idle,
             ...defaultContext
         }
-        const nextStatus = getNextStatus(PicoSessionEvent.START_DEEPCLEAN, context);
+        const nextStatus = getNextState(PicoSessionEvent.START_DEEPCLEAN, context);
         expect(nextStatus).to.equal(PicoSessionState.DeepCleaning);
     });
 
@@ -118,7 +118,7 @@ describe('## Pico Session state machine', () => {
             currentState:PicoSessionState.Idle,
             ...defaultContext
         }
-        const nextStatus = getNextStatus(PicoSessionEvent.START_SOUSVIDE, context);
+        const nextStatus = getNextState(PicoSessionEvent.START_SOUSVIDE, context);
         expect(nextStatus).to.equal(PicoSessionState.SousVideCooking);
     });
 
@@ -127,7 +127,7 @@ describe('## Pico Session state machine', () => {
             currentState:PicoSessionState.Idle,
             ...defaultContext
         }
-        const nextStatus = getNextStatus(PicoSessionEvent.START_FERMENTING, context);
+        const nextStatus = getNextState(PicoSessionEvent.START_FERMENTING, context);
         expect(nextStatus).to.equal(PicoSessionState.Idle);
     });
 
@@ -136,7 +136,7 @@ describe('## Pico Session state machine', () => {
             currentState:PicoSessionState.Idle,
             ...defaultContext
         }
-        const nextStatus = getNextStatus(PicoSessionEvent.START_CARBONATING, context);
+        const nextStatus = getNextState(PicoSessionEvent.START_CARBONATING, context);
         expect(nextStatus).to.equal(PicoSessionState.Idle);
     });
 
@@ -145,14 +145,14 @@ describe('## Pico Session state machine', () => {
             currentState:PicoSessionState.Idle,
             ...defaultContext
         }
-        const nextStatus = getNextStatus(PicoSessionEvent.START_COLDCRASHING, context);
+        const nextStatus = getNextState(PicoSessionEvent.START_COLDCRASHING, context);
         expect(nextStatus).to.equal(PicoSessionState.Idle);
     });
 
     it('Can end session after DeepCleaning, ColdBrewing and SousVideCooking', () => {
-        expect(getNextStatus(PicoSessionEvent.END_SESSION, {currentState:PicoSessionState.DeepCleaning})).to.equal(PicoSessionState.Finished);
-        expect(getNextStatus(PicoSessionEvent.END_SESSION, {currentState:PicoSessionState.ColdBrewing})).to.equal(PicoSessionState.Finished);
-        expect(getNextStatus(PicoSessionEvent.END_SESSION, {currentState:PicoSessionState.SousVideCooking})).to.equal(PicoSessionState.Finished);
+        expect(getNextState(PicoSessionEvent.END_SESSION, {currentState:PicoSessionState.DeepCleaning})).to.equal(PicoSessionState.Finished);
+        expect(getNextState(PicoSessionEvent.END_SESSION, {currentState:PicoSessionState.ColdBrewing})).to.equal(PicoSessionState.Finished);
+        expect(getNextState(PicoSessionEvent.END_SESSION, {currentState:PicoSessionState.SousVideCooking})).to.equal(PicoSessionState.Finished);
     });
 
     it('Can cancel session at any state', () => {
@@ -160,30 +160,30 @@ describe('## Pico Session state machine', () => {
             currentState:PicoSessionState.Idle,
             ...defaultContext
         }
-        expect(getNextStatus(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
+        expect(getNextState(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
 
         context.currentState = PicoSessionState.Brewing;
-        expect(getNextStatus(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
+        expect(getNextState(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
 
         context.currentState = PicoSessionState.Finished;
-        expect(getNextStatus(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
+        expect(getNextState(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
 
         context.currentState = PicoSessionState.SousVideCooking;
-        expect(getNextStatus(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
+        expect(getNextState(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
 
         context.currentState = PicoSessionState.DeepCleaning;
-        expect(getNextStatus(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
+        expect(getNextState(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
 
         context.currentState = PicoSessionState.ColdBrewing;
-        expect(getNextStatus(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
+        expect(getNextState(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
 
         context.currentState = PicoSessionState.ColdCrashing;
-        expect(getNextStatus(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
+        expect(getNextState(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
 
         context.currentState = PicoSessionState.Carbonating;
-        expect(getNextStatus(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
+        expect(getNextState(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
 
         context.currentState = PicoSessionState.Fermenting;
-        expect(getNextStatus(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
+        expect(getNextState(PicoSessionEvent.CANCEL_SESSION, context)).to.equal(PicoSessionState.Finished);
     });
 });
