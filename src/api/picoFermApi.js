@@ -2,7 +2,10 @@ const Joi = require('joi');
 const mongoose = require('mongoose');
 const { getLogger } = require('../utils/logger');
 const { manageExceptions, returnSchemaError, BaseApi } = require('./baseApi');
-const { PicoFermRegistration, PicoFermFirmware, PicoFermState, PicoFermStateResponse, PicoBrewingSessionState, findDictKeyByValue } = require('../models/picoDictionnary');
+const { RecordNotFound } = require('../apiException');
+const { PicoSessionState } = require('../models/sessionMachine');
+const { PicoFermRegistration, PicoFermFirmware, PicoFermState, PicoFermStateResponse, findDictKeyByValue } = require('../models/picoDictionnary');
+
 const { corsOrigin } = require("../services/config/config");
 
 const logger = getLogger('PICOFERM-API');
@@ -113,19 +116,30 @@ class PicoFermApi extends BaseApi {
         const uid = request.query.uid;
         logger.info(`getState from ${uid}`);
 
-        const resolveNewState = async (picoFermId, currentState, sessionId) => {
+        const resolveNewState = async (picoFermId, currentState, picoSessionId) => {
+            let newState = PicoFermState.NothingTodo;
 
-            return Promise.resolve(PicoFermState.InProgressSendingData);
-            /* TODO: Broken since session refactoring
-            let newState = currentState;
-
-            if(!!sessionId) {
-                let session = await this.sessionService.getById(sessionId);
-                newState = !!session && session.brewingStatus === PicoBrewingSessionState.Fermenting ? PicoFermState.InProgressSendingData : PicoFermState.NothingTodo;
-                return this.service.updateStateById(picoFermId, findDictKeyByValue(PicoFermState, newState)).then(p => newState);
-            } else {
+            const updatePicoFermState = (id, currentState,  newState) => {
+                if(currentState !== newState) {
+                    return this.service.updateStateById(id, newState).then(_ => newState);
+                }
                 return Promise.resolve(newState);
-            }*/
+            };
+
+            if(!!picoSessionId) {
+                this.sessionService.getById(picoSessionId).then(session => {
+                    if(session.status === PicoSessionState.Fermenting) newState = PicoFermState.InProgressSendingData;
+                    return updatePicoFermState(picoFermId, currentState, newState);
+                }).catch(err => {
+                    if(err instanceof RecordNotFound) {
+                        return updatePicoFermState(picoFermId, currentState, newState);
+                    }
+                    throw err;
+                });
+            } else {
+                return updatePicoFermState(picoFermId, currentState, newState);
+            }
+
         }
 
         return this.service.getDeviceBySerialNumber(uid)

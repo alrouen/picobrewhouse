@@ -207,4 +207,4 @@ class PicoSession extends BaseModel {
     }
 }
 
-module.exports = PicoSession
+module.exports = PicoSession;
