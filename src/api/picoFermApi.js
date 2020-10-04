@@ -173,7 +173,6 @@ class PicoFermApi extends BaseApi {
         logger.info(`logDataSet from ${uid}, with rate ${rate}, voltage: ${voltage} and data: ${data}`);
         const j = JSON.parse(data);
 
-
         return this.service.getDeviceBySerialNumber(uid)
             .then(p => {
                 if(!!p.picoSessionId) {
