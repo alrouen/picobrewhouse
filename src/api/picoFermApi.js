@@ -120,6 +120,12 @@ class PicoFermApi extends BaseApi {
             let newState = PicoFermState.NothingTodo;
 
             const updatePicoFermState = (id, currentState,  newState) => {
+
+                console.log("--- PicoFerm status --- ");
+                console.log(id);
+                console.log(currentState);
+                console.log(newState);
+
                 if(currentState !== newState) {
                     return this.service.updateStateById(id, newState).then(_ => newState);
                 }
@@ -145,8 +151,15 @@ class PicoFermApi extends BaseApi {
         return this.service.getDeviceBySerialNumber(uid)
             .then(p =>
                 resolveNewState(p._id, p.currentState, p.picoSessionId)
-                    .then(state =>
-                        h.response(PicoFermStateResponse[findDictKeyByValue(PicoFermState, state)]).code(200)
+                    .then(state => {
+
+                        const responseState = PicoFermStateResponse[findDictKeyByValue(PicoFermState, state)];
+                        console.log(responseState);
+                        console.log("----");
+
+                        return h.response(PicoFermStateResponse[findDictKeyByValue(PicoFermState, state)]).code(200);
+                    }
+
                     )
             )
             .catch(err => manageExceptions(err));
