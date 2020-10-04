@@ -173,9 +173,21 @@ class PicoFermApi extends BaseApi {
         logger.info(`logDataSet from ${uid}, with rate ${rate}, voltage: ${voltage} and data: ${data}`);
         const j = JSON.parse(data);
 
-        return this.fermentationTS.addLastHo<urFermentationData(new mongoose.mongo.ObjectId('5f5ca92922cdbefb5e424b37'), rate, voltage, j)
+
+        return this.service.getDeviceBySerialNumber(uid)
+            .then(p => {
+                if(!!p.picoSessionId) {
+                    return this.fermentationTS.addLastHourFermentationData(p.picoSessionId, rate, voltage, j)
+                        .then(_ => h.response(PicoFermStateResponse.InProgressSendingData).code(200))
+                } else {
+                    return h.response(PicoFermStateResponse.NothingTodo).code(200);
+                }
+            })
+            .catch(err => manageExceptions(err));
+
+        /*return this.fermentationTS.addLastHourFermentationData(new mongoose.mongo.ObjectId('5f5ca92922cdbefb5e424b37'), rate, voltage, j)
             .then(_ => h.response(`#10,0#`).code(200))
-            .catch(err => manageExceptions(err))
+            .catch(err => manageExceptions(err))*/
     }
 
     catchAll(request, h) {
