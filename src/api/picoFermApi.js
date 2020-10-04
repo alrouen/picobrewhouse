@@ -120,12 +120,6 @@ class PicoFermApi extends BaseApi {
             let newState = PicoFermState.NothingTodo;
 
             const updatePicoFermState = async (id, currentState,  newState) => {
-
-                console.log("--- 2) PicoFerm status --- ");
-                console.log(id);
-                console.log(currentState);
-                console.log(newState);
-
                 if(currentState !== newState) {
                     return this.service.updateStateById(id, newState).then(_ => newState);
                 }
@@ -133,9 +127,8 @@ class PicoFermApi extends BaseApi {
             };
 
             if(!!picoSessionId) {
-                this.sessionService.getById(picoSessionId).then(session => {
+                return this.sessionService.getById(picoSessionId).then(session => {
                     if(session.status === PicoSessionState.Fermenting) newState = PicoFermState.InProgressSendingData;
-                    console.log("--- 1) PicoFerm status --- ");
                     return updatePicoFermState(picoFermId, currentState, newState);
                 }).catch(err => {
                     if(err instanceof RecordNotFound) {
@@ -152,15 +145,8 @@ class PicoFermApi extends BaseApi {
         return this.service.getDeviceBySerialNumber(uid)
             .then(p =>
                 resolveNewState(p._id, p.currentState, p.picoSessionId)
-                    .then(state => {
-                        console.log("--- 3) PicoFerm status --- ");
-                        const responseState = PicoFermStateResponse[findDictKeyByValue(PicoFermState, state)];
-                        console.log(responseState);
-                        console.log("----");
-
-                        return h.response(PicoFermStateResponse[findDictKeyByValue(PicoFermState, state)]).code(200);
-                    }
-
+                    .then(state =>
+                        h.response(PicoFermStateResponse[findDictKeyByValue(PicoFermState, state)]).code(200)
                     )
             )
             .catch(err => manageExceptions(err));
