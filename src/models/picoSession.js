@@ -4,7 +4,7 @@ const { EnumTypeComposer } = require('graphql-compose');
 const { ForbiddenError } = require('apollo-server-hapi')
 const { createAudit, AuditSchemaDef } = require('./mixins/audit');
 const { PicoSessionType } = require('./picoDictionnary');
-const { PicoSessionState, PicoSessionEvent, getNextState } = require('./sessionMachine');
+const { PicoSessionState, getNextState } = require('./sessionMachine');
 const { BaseModel } = require('./baseModel');
 const { RecordNotFound } = require('../apiException');
 const { randomString, remainingSec } = require('../utils/utils');
@@ -50,11 +50,12 @@ const getSessionNextState = (session, newEvent) => {
     return {previousState:currentState, nextState};
 };
 
-const updateSessionStatus = (model, sessionId, event, previousState, nextState) => {
+const updateSessionStatus = (model, sessionId, event, previousState, nextState, brewingParameters) => {
     return model.updateOne(
         { _id:sessionId },
         {
             status:nextState,
+            brewingParameters:brewingParameters,
             $push: { statusHistory: { event, previousState: previousState, eventDate:new Date() }},
             "audit.updatedAt": new Date()
         }
@@ -95,7 +96,22 @@ class PicoSession extends BaseModel {
                 const { previousState, nextState } = getSessionNextState(s, event);
 
                 if(previousState === nextState) throw new ForbiddenError("invalid event");
-                return updateSessionStatus(model, id, event, previousState, nextState).then(_ => nextState);
+
+                let brewingParameters = s.brewingParameters;
+                switch (nextState) {
+                    case PicoSessionState.Fermenting:
+                        brewingParameters.startOfFermentation = new Date();
+                        break;
+                    case PicoSessionState.ColdCrashing:
+                        brewingParameters.startOfColdCrashing = new Date();
+                        break;
+                    case PicoSessionState.Carbonating:
+                        brewingParameters.startOfCarbonating = new Date();
+                        break;
+                    default:
+                }
+
+                return updateSessionStatus(model, id, event, previousState, nextState, brewingParameters).then(_ => nextState);
             })
         };
 
@@ -197,12 +213,14 @@ class PicoSession extends BaseModel {
         return doc.save();
     }
 
+    // Update session status related to new event coming from the PicoBrew according to the state machine rules.
+    // Do nothing if there is no status update
     async updateSessionStatusByPicoSessionAndBrewerId(picoSessionId, brewerId, event) {
         return this.getByPicoSessionIdAndBrewerId(picoSessionId, brewerId)
             .then(s => {
                 const { previousState, nextState } = getSessionNextState(s, event);
                 if(previousState === nextState) return Promise.resolve(previousState);
-                return updateSessionStatus(this._model, s._id, event, previousState, nextState).then(_ => nextState);
+                return updateSessionStatus(this._model, s._id, event, previousState, nextState, s.brewingParameters).then(_ => nextState);
             });
     }
 }
