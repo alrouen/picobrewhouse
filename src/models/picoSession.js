@@ -139,6 +139,7 @@ class PicoSession extends BaseModel {
                     START_COLDBREW 
                     START_FERMENTING 
                     START_COLDCRASHING
+                    START_CARBONATING
                     END_SESSION
                     CANCEL_SESSION
                 }`, modelTC.schemaComposer)

@@ -2,7 +2,7 @@ import React from 'react';
 import { Container, Divider, Grid, Header } from "semantic-ui-react"
 import Sessions from "../components/sessions";
 import Fermentation from "../components/fermentation";
-
+import Brewing from "../components/brewing";
 
 export default () => {
      return (
@@ -16,6 +16,11 @@ export default () => {
                      <Grid.Row>
                          <Grid.Column>
                              <Sessions />
+                         </Grid.Column>
+                     </Grid.Row>
+                     <Grid.Row>
+                         <Grid.Column>
+                             <Brewing />
                          </Grid.Column>
                      </Grid.Row>
                      <Grid.Row>
