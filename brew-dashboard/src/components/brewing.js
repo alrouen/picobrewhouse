@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { Component } from 'react';
 import { useQuery } from "urql";
 import moment from "moment";
 import { VictoryChart, VictoryLine, VictoryTheme, VictoryAxis, VictoryLabel, VictoryTooltip, VictoryVoronoiContainer } from 'victory';
+import { withPicoSessionService } from "../context/picoSession";
 
-const brewingData = `
+const brewingData = (sessionId) => `
     query {
-        brewingTSBySessionId(sessionId:"5f789510b9793adcbb51f4f3") {recordId, record {wt, tt, s, e, t, _ts}}
+        brewingTSBySessionId(sessionId:"${sessionId}") {recordId, record {wt, tt, s, e, t, _ts}}
     }
 `;
 
@@ -23,10 +24,9 @@ const toStrDate = (t) => {
 // __typename: "brewingData"
 //_ts:123565
 
-export default () => {
-
+const BrewingChart = (props) => {
     const [res, executeQuery] = useQuery({
-        query: brewingData,
+        query: brewingData(this.props.currentSessionId),
     });
 
     if(res.fetching) {
@@ -57,6 +57,17 @@ export default () => {
             </div>
         }
     }
-
-
 }
+
+class Brewing extends Component {
+    render() {
+
+        console.log(this.props);
+
+        return (
+            <div>Session: {this.props.picoSessionService}</div>
+        );
+    }
+}
+
+export default withPicoSessionService(Brewing)
