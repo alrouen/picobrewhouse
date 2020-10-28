@@ -5,7 +5,7 @@ import { VictoryChart, VictoryLine, VictoryTheme, VictoryAxis, VictoryLabel, Vic
 
 const fermentationData = `
     query {
-        fermentingTSBySessionId(sessionId:"5f789510b9793adcbb51f4f3") { recordId, record { _ts, t, p, v} }
+        fermentingTSBySessionId(sessionId:"5f95a591ffbd511ec3339d70") { recordId, record { _ts, t, p, v} }
     }
 `;
 
